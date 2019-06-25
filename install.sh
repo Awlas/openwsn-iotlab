@@ -35,4 +35,5 @@ echo "------------------------"
 echo "Installing cli-tools"
 sudo rm -Rf cli-tools
 sudo git clone https://github.com/iot-lab/cli-tools.git
+sudo python setup.py install
 
