@@ -9,13 +9,25 @@ FW_BIN_DAGROOT=/home/theoleyre/openwsn/scripts/firmwares/03oos_openwsn_prog_dagr
 FW_BIN_DEVICE=/home/theoleyre/openwsn/scripts/firmwares/03oos_openwsn_prog_device
 NBNODES=4
 USER=theoleyr
-SITE=strasbourg
+SITE=grenoble
 ARCHI=m3
 NAME="test"
 
 echo
 echo
 echo
+
+
+
+echo "------- mirroring for devices vs DAGROOT firmwares ------"
+rsync -av --delete-after --exclude '.sconsign.dblite' --exclude 'build' --exclude 'projects/common'  $FW_SRC_DEVICE $FW_SRC_DAGROOT
+
+echo
+echo
+echo
+
+
+
 
 
 echo "----- searching for an existing running experiment -------"
@@ -189,6 +201,7 @@ echo $SOCAT
 #$SOCAT
 i=0
 sudo killall socat
+sleep 1;
 for port in "${PORTS[@]}"
 do
 	echo "tcpPort $port -> /dev/ttyUSB"$i
