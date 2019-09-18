@@ -9,9 +9,9 @@ FW_BIN_DAGROOT=/home/theoleyre/openwsn/scripts/firmwares/03oos_openwsn_prog_dagr
 FW_BIN_DEVICE=/home/theoleyre/openwsn/scripts/firmwares/03oos_openwsn_prog_device
 NBNODES=4
 USER=theoleyr
-SITE=grenoble
+SITE=strasbourg
 ARCHI=m3
-NAME="test"
+NAME="OVIZ"
 
 echo
 echo
@@ -20,7 +20,7 @@ echo
 
 
 echo "------- mirroring for devices vs DAGROOT firmwares ------"
-rsync -av --delete-after --exclude '.sconsign.dblite' --exclude 'build' --exclude 'projects/common'  $FW_SRC_DEVICE $FW_SRC_DAGROOT
+rsync -av --delete-after --exclude '.sconsign.dblite' --exclude 'build' --exclude 'projects/common'  $FW_SRC_DEVICE/ $FW_SRC_DAGROOT
 
 echo
 echo
@@ -101,16 +101,31 @@ echo "Directory $FW_SRC_DAGROOT"
 cd $FW_SRC_DAGROOT
 echo "scons board=iot-lab_M3 toolchain=armgcc dagroot=1 oos_openwsn"
 scons board=iot-lab_M3 toolchain=armgcc dagroot=1 oos_openwsn
+#errors
+if [ $? -ne 0 ]
+then
+echo "Compilation error (dagroot)"
+exit 5
+fi
 echo "cp $FW_BIN $FW_BIN_DAGROOT"
 cp $FW_BIN $FW_BIN_DAGROOT
+
+
 
 echo " Compiling devices..."
 echo "Directory $FW_SRC_DEVICE"
 cd $FW_SRC_DEVICE
 echo "scons board=iot-lab_M3 toolchain=armgcc dagroot=0 oos_openwsn"
 scons board=iot-lab_M3 toolchain=armgcc dagroot=0 oos_openwsn
+#errors
+if [ $? -ne 0 ]
+then
+echo "Compilation error (device)"
+exit 6
+fi
 echo "cp $FW_BIN $FW_BIN_DEVICE"
 cp $FW_BIN $FW_BIN_DEVICE
+
 
 
 echo
