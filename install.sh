@@ -10,11 +10,15 @@ REP=`pwd`
 echo "------------------------"
 echo "Clonning Firmwares"
 cd $REP
+sudo rm -Rf openwsn-fw
 sudo rm -Rf openwsn-fw-dagroot
 sudo git clone $REPO_FW
 mv openwsn-fw openwsn-fw-dagroot
 sudo rm -Rf openwsn-fw-device
-sudo cp -Rf openwsn-fw-dagroot openwsn-fw-device
+sudo rm -Rf openwsn-fw-device
+sudo git clone $REPO_FW
+mv openwsn-fw openwsn-fw-device
+
 
 # Software tools
 echo "-------------------------------"
@@ -35,6 +39,7 @@ echo "------------------------"
 echo "Installing cli-tools"
 sudo rm -Rf cli-tools
 sudo git clone https://github.com/iot-lab/cli-tools.git
+cd cli-tools
 sudo python setup.py install
 
 # Packages
