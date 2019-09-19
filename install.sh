@@ -1,7 +1,7 @@
 #!/bin/bash
 
-REPO_FW=https://github.com/openwsn-berkeley/openwsn-fw.git
-REPO_SW=https://github.com/openwsn-berkeley/openvisualizer.git
+REPO_FW=https://github.com/ftheoleyre/openwsn-fw.git
+REPO_SW=https://github.com/ftheoleyre/openvisualizer.git
 
 # Current repository
 REP=`pwd`
@@ -40,6 +40,9 @@ sudo python setup.py install
 # Packages
 echo "------------------------"
 echo "Installing Python packages"
+cd $REP
+cd openvisualizer
+python -r requirements.txt
 cd $REP
 sudo rm -rf paho.mqtt.python
 sudo git clone https://github.com/eclipse/paho.mqtt.python
