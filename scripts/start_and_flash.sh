@@ -257,12 +257,9 @@ echo
 
 #Scat TUNNELING
 echo "----- SOCAT TUNNELING ------"
-echo $SOCAT
-SOCAT=$SOCAT" sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port,fork;"
-$SOCAT
-i=0
 sudo killall socat
 sleep 1;
+i=0
 for port in "${PORTS[@]}"
 do
     echo "tcpPort $port -> /dev/ttyUSB"$i
