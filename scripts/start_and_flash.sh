@@ -24,10 +24,12 @@ ARCHI="m3"
 #BOARD="iot-lab_A8-M3"
 BOARD="iot-lab_M3"
 
-echo
-echo
-echo
 
+REP_CURRENT=`pwd`
+
+echo
+echo
+echo
 
 
 echo "------- mirroring for devices vs DAGROOT firmwares ------"
@@ -52,6 +54,8 @@ then
 else
 	echo "No already experiment running"
 fi
+#remove tmp file
+rm json.dump
 echo
 echo
 echo
@@ -83,6 +87,9 @@ if [ -z "$SITE" ]
 then
 	exit 5
 fi
+#remove tmp file
+rm json.dump
+
 
 
 #EXperiment Identification
@@ -92,6 +99,8 @@ CMD="iotlab-experiment get -i $EXPID -r"
 $CMD > json.dump
 NODES_LIST=`python nodes_list.py | cut -d "." -f 1 | cut -d "-" -f 2 ` 
 echo "the site has been identified to $SITE"
+#tmp file
+rm json.dump
 echo
 echo
 echo
@@ -176,6 +185,8 @@ do
 done
 echo "$nbnodes nodes"
 
+
+
 #flash the dagroot
 i=0
 while [ $i -lt $nbnodes ]
@@ -189,10 +200,21 @@ do
     fi
     echo "----- Flashing the dagroot -------"
     echo $CMD
-    $CMD
+    $CMD > $REP_CURRENT/json_flash.dump
+    
+    #error??
+    REP=`pwd`
+    cd $REP_CURRENT
+    RESULT=`python cmd_result.py`
+    ERROR=`echo $RESULT | grep ko`
+    OK=`echo $RESULT | grep ok`
+    cd $REP
+    echo "$OK" | tr " " "\n"
+    #tmp file
+    rm $REP_CURRENT/json_flash.dump
 
     ##everything is ok
-    if [ $? -eq 0 ]
+    if [ $? -eq 0 ] && [ -z "$ERROR" ]
     then
         port=10000
         SSHPORTS="-L $port:m3-${NODES[$i]}:20000"
@@ -234,8 +256,21 @@ do
 done
 echo "----- Flashing the devices -------"
 echo $CMD
-$CMD
-echo
+$CMD > $REP_CURRENT/json_flash.dump
+
+
+#error??
+REP=`pwd`
+cd $REP_CURRENT
+RESULT=`python cmd_result.py`
+ERROR=`echo $RESULT | grep ko`
+OK=`echo $RESULT | grep ok`
+cd $REP
+echo "$OK" | tr " " "\n"
+#tmp file
+rm $REP_CURRENT/json_flash.dump
+
+
 echo
 echo
 
