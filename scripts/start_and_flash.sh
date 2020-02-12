@@ -1,17 +1,28 @@
 #!/bin/bash
 
-#parameters
-DURATION=65
-FW_SRC_DAGROOT=/home/theoleyre/openwsn/openwsn-fw-dagroot
-FW_SRC_DEVICE=/home/theoleyre/openwsn/openwsn-fw-device
-FW_BIN=build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog
-FW_BIN_DAGROOT=/home/theoleyre/openwsn/scripts/firmwares/03oos_openwsn_prog_dagroot
-FW_BIN_DEVICE=/home/theoleyre/openwsn/scripts/firmwares/03oos_openwsn_prog_device
-NBNODES=4
+#compiation & firmwares
+FW_SRC_DAGROOT="../openwsn-fw-dagroot"
+FW_SRC_DEVICE="../openwsn-fw-device"
+FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
+FW_BIN_DAGROOT="../scripts/firmwares/03oos_openwsn_prog_dagroot"
+FW_BIN_DEVICE="../scripts/firmwares/03oos_openwsn_prog_device"
+
+#firmwares on iotlab
+FW_BIN_DAGROOT_IOTLAB="A8/03oos_openwsn_prog_dagroot"
+FW_BIN_DEVICE_IOTLAB="A8/03oos_openwsn_prog_device"
+
+#parameters for experiments
 USER=theoleyr
 SITE=strasbourg
-ARCHI=m3
 NAME="OVIZ"
+NBNODES=4
+DURATION=65
+
+#architecture
+#ARCHI="a8"
+ARCHI="m3"
+#BOARD="iot-lab_A8-M3"
+BOARD="iot-lab_M3"
 
 echo
 echo
@@ -58,12 +69,6 @@ then
 	echo
 	echo
 
-	#wait it starts runing
-	echo "----- waiting the experiment is in running mode -------"
-	iotlab-experiment wait -i $EXPID
-	echo
-	echo
-	echo
 fi
 
 
@@ -99,8 +104,9 @@ echo "------- Compilation ------"
 echo " Compiling dagroot..."
 echo "Directory $FW_SRC_DAGROOT"
 cd $FW_SRC_DAGROOT
-echo "scons board=iot-lab_M3 toolchain=armgcc dagroot=1 oos_openwsn"
-scons board=iot-lab_M3 toolchain=armgcc dagroot=1 oos_openwsn
+CMD="scons board=$BOARD toolchain=armgcc dagroot=1 oos_openwsn"
+echo $CMD
+$CMD
 #errors
 if [ $? -ne 0 ]
 then
@@ -109,14 +115,16 @@ exit 5
 fi
 echo "cp $FW_BIN $FW_BIN_DAGROOT"
 cp $FW_BIN $FW_BIN_DAGROOT
-
-
+CMD="scp $FW_BIN $USER@$SITE.iot-lab.info:$FW_BIN_DAGROOT_IOTLAB"
+echo $CMD
+$CMD
 
 echo " Compiling devices..."
 echo "Directory $FW_SRC_DEVICE"
 cd $FW_SRC_DEVICE
-echo "scons board=iot-lab_M3 toolchain=armgcc dagroot=0 oos_openwsn"
-scons board=iot-lab_M3 toolchain=armgcc dagroot=0 oos_openwsn
+CMD="scons board=$BOARD toolchain=armgcc dagroot=0 oos_openwsn"
+echo $CMD
+$CMD
 #errors
 if [ $? -ne 0 ]
 then
@@ -125,12 +133,35 @@ exit 6
 fi
 echo "cp $FW_BIN $FW_BIN_DEVICE"
 cp $FW_BIN $FW_BIN_DEVICE
+CMD="scp $FW_BIN $USER@$SITE.iot-lab.info:$FW_BIN_DEVICE_IOTLAB"
+echo $CMD
+$CMD
 
 
 
 echo
 echo
 echo
+
+
+#wait the experiment starts runing
+echo "----- waiting the experiment is in running mode -------"
+iotlab-experiment wait -i $EXPID
+echo
+echo
+echo
+
+
+
+
+
+#A8 boot
+if [ "$ARCHI" == "a8" ]
+then
+    echo "------- Wait that a8 nodes boot ------"
+    iotlab-ssh wait-for-boot
+fi
+
 
 
 
@@ -140,8 +171,8 @@ echo
 nbnodes=0
 for N in $NODES_LIST
 do
-	NODES[$nbnodes]=$N
-	((nbnodes++))
+    NODES[$nbnodes]=$N
+    ((nbnodes++))
 done
 echo "$nbnodes nodes"
 
@@ -149,21 +180,27 @@ echo "$nbnodes nodes"
 i=0
 while [ $i -lt $nbnodes ]
 do
-	CMD="iotlab-node --update $FW_BIN_DAGROOT -l $SITE,$ARCHI,${NODES[$i]} -i $EXPID"
-	echo "----- Flashing the dagroot -------"
-	echo $CMD
-	$CMD
+    if [ $ARCHI == "m3" ]
+    then
+        CMD="iotlab-node --update $FW_BIN_DAGROOT -l $SITE,$ARCHI,${NODES[$i]} -i $EXPID"
+    else
+    #    CMD="iotlab-ssh  -i $EXPID flash-m3 $FW_BIN_DAGROOT -l $SITE,$ARCHI,${NODES[$i]}"
+        CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_DAGROOT_IOTLAB\" -l $SITE,$ARCHI,${NODES[$i]}"
+    fi
+    echo "----- Flashing the dagroot -------"
+    echo $CMD
+    $CMD
 
-	##everything is ok
-	if [ $? -eq 0 ]
-	then 
-		port=10000
-		SSHPORTS="-L $port:m3-${NODES[$i]}:20000"
-		PORTS[0]=$port
-		break
-	fi
+    ##everything is ok
+    if [ $? -eq 0 ]
+    then
+        port=10000
+        SSHPORTS="-L $port:m3-${NODES[$i]}:20000"
+        PORTS[0]=$port
+        break
+    fi
 
-	((i++))
+    ((i++))
 done
 echo
 echo
@@ -174,7 +211,13 @@ echo
 
 #first mote in the list
 ((i++))
-CMD="iotlab-node --update $FW_BIN_DEVICE -i $EXPID -l $SITE,$ARCHI,${NODES[$i]}"
+if [ $ARCHI == "m3" ]
+then
+    CMD="iotlab-node --update $FW_BIN_DEVICE -i $EXPID -l $SITE,$ARCHI,${NODES[$i]}"
+else
+    CMD="iotlab-ssh -i $EXPID  flash-m3 $FW_BIN_DEVICE -l $SITE,$ARCHI,${NODES[$i]}"
+    CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_DEVICE_IOTLAB\" -l $SITE,$ARCHI,${NODES[$i]}"
+fi
 ((port++))
 SSHPORTS="$SSHPORTS -L $port:m3-${NODES[$i]}:20000"
 PORTS[${#PORTS[@]}]=$port
@@ -183,11 +226,11 @@ PORTS[${#PORTS[@]}]=$port
 #remaining nodes (with a + to concatenate the command)"
 while [ $i -lt $nbnodes ]
 do
-	CMD="$CMD+${NODES[$i]}"
-	((port++))
-	SSHPORTS="$SSHPORTS -L $port:m3-${NODES[$i]}:20000"
-	PORTS[${#PORTS[@]}]=$port
-	((i++))
+    CMD="$CMD+${NODES[$i]}"
+    ((port++))
+    SSHPORTS="$SSHPORTS -L $port:m3-${NODES[$i]}:20000"
+    PORTS[${#PORTS[@]}]=$port
+    ((i++))
 done
 echo "----- Flashing the devices -------"
 echo $CMD
@@ -201,7 +244,10 @@ echo
 
 #ssh forwarding
 echo "----- Forwarding the serial ports (ssh)  -------"
-killall ssh
+CMD="killall ssh"
+echo $CMD
+$CMD
+echo $?
 CMD="ssh -fN $USER@$SITE.iot-lab.info $SSHPORTS"
 echo $CMD
 $CMD
@@ -212,17 +258,17 @@ echo
 #Scat TUNNELING
 echo "----- SOCAT TUNNELING ------"
 echo $SOCAT
-#SOCAT=$SOCAT" sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port,fork;"
-#$SOCAT
+SOCAT=$SOCAT" sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port,fork;"
+$SOCAT
 i=0
 sudo killall socat
 sleep 1;
 for port in "${PORTS[@]}"
 do
-	echo "tcpPort $port -> /dev/ttyUSB"$i
-	echo "sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port"
-	sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port &
-	((i++))
+    echo "tcpPort $port -> /dev/ttyUSB"$i
+    echo "sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port"
+    sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port &
+    ((i++))
 done
 
 echo
