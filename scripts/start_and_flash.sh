@@ -92,6 +92,14 @@ rm json.dump
 
 
 
+#wait the experiment starts runing
+echo "----- waiting the experiment is in running mode -------"
+iotlab-experiment wait -i $EXPID
+echo
+echo
+echo
+
+
 #EXperiment Identification
 #get the list of nodes
 CMD="iotlab-experiment get -i $EXPID -r"
@@ -153,12 +161,6 @@ echo
 echo
 
 
-#wait the experiment starts runing
-echo "----- waiting the experiment is in running mode -------"
-iotlab-experiment wait -i $EXPID
-echo
-echo
-echo
 
 
 
