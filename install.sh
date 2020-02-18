@@ -11,14 +11,7 @@ echo "------------------------"
 echo "Clonning Firmwares"
 cd $REP
 sudo rm -Rf openwsn-fw
-sudo rm -Rf openwsn-fw-dagroot
 sudo git clone $REPO_FW
-mv openwsn-fw openwsn-fw-dagroot
-sudo rm -Rf openwsn-fw-device
-sudo rm -Rf openwsn-fw-device
-sudo git clone $REPO_FW
-mv openwsn-fw openwsn-fw-device
-
 
 # Software tools
 echo "-------------------------------"
@@ -34,6 +27,7 @@ cd $REP
 sudo rm -rf coap
 sudo git clone https://github.com/openwsn-berkeley/coap.git
 
+
 #Install Cli Tools
 echo "------------------------"
 echo "Installing cli-tools"
@@ -41,6 +35,7 @@ sudo rm -Rf cli-tools
 sudo git clone https://github.com/iot-lab/cli-tools.git
 cd cli-tools
 sudo python setup.py install
+
 
 # Packages
 echo "------------------------"
@@ -61,8 +56,6 @@ echo "Installing arm"
 cd $REP
 
 echo "You have to install gcc-arm-none-eabi (sudo apt install gcc-arm-none-eabi, or download the latest version at https://developer.arm.com/"
-
-
 
 
 # iotlab ssh tools

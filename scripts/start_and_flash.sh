@@ -1,15 +1,9 @@
 #!/bin/bash
 
 #compiation & firmwares
-FW_SRC_DAGROOT="../openwsn-fw-dagroot"
-FW_SRC_DEVICE="../openwsn-fw-device"
+FW_SRC="../openwsn-fw-device"
 FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
-FW_BIN_DAGROOT="../scripts/firmwares/03oos_openwsn_prog_dagroot"
-FW_BIN_DEVICE="../scripts/firmwares/03oos_openwsn_prog_device"
-
-#firmwares on iotlab
-FW_BIN_DAGROOT_IOTLAB="A8/03oos_openwsn_prog_dagroot"
-FW_BIN_DEVICE_IOTLAB="A8/03oos_openwsn_prog_device"
+FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
 
 #parameters for experiments
 USER=theoleyr
@@ -31,13 +25,6 @@ echo
 echo
 echo
 
-
-echo "------- mirroring for devices vs DAGROOT firmwares ------"
-rsync -av --delete-after --exclude '.sconsign.dblite' --exclude 'build' --exclude 'projects/common'  $FW_SRC_DEVICE/ $FW_SRC_DAGROOT
-
-echo
-echo
-echo
 
 
 
@@ -76,6 +63,15 @@ then
 fi
 
 
+
+#wait the experiment starts runing
+echo "----- waiting the experiment is in running mode -------"
+iotlab-experiment wait -i $EXPID
+echo
+echo
+echo
+
+
 #get the correct site
 echo "----- Site Identification -------"
 CMD="iotlab-experiment get -i $EXPID -r"
@@ -91,13 +87,6 @@ fi
 rm json.dump
 
 
-
-#wait the experiment starts runing
-echo "----- waiting the experiment is in running mode -------"
-iotlab-experiment wait -i $EXPID
-echo
-echo
-echo
 
 
 #EXperiment Identification
@@ -118,27 +107,10 @@ echo
 #Compilation
 echo "------- Compilation ------"
 
-echo " Compiling dagroot..."
-echo "Directory $FW_SRC_DAGROOT"
-cd $FW_SRC_DAGROOT
-CMD="scons board=$BOARD toolchain=armgcc dagroot=1 oos_openwsn"
-echo $CMD
-$CMD
-#errors
-if [ $? -ne 0 ]
-then
-echo "Compilation error (dagroot)"
-exit 5
-fi
-echo "cp $FW_BIN $FW_BIN_DAGROOT"
-cp $FW_BIN $FW_BIN_DAGROOT
-CMD="scp $FW_BIN $USER@$SITE.iot-lab.info:$FW_BIN_DAGROOT_IOTLAB"
-echo $CMD
-$CMD
 
-echo " Compiling devices..."
-echo "Directory $FW_SRC_DEVICE"
-cd $FW_SRC_DEVICE
+echo " Compiling firmware..."
+echo "Directory $FW_SRC"
+cd $FW_SRC
 CMD="scons board=$BOARD toolchain=armgcc dagroot=0 oos_openwsn"
 echo $CMD
 $CMD
@@ -148,9 +120,7 @@ then
 echo "Compilation error (device)"
 exit 6
 fi
-echo "cp $FW_BIN $FW_BIN_DEVICE"
-cp $FW_BIN $FW_BIN_DEVICE
-CMD="scp $FW_BIN $USER@$SITE.iot-lab.info:$FW_BIN_DEVICE_IOTLAB"
+CMD="scp $FW_BIN $USER@$SITE.iot-lab.info:$FW_BIN_IOTLAB"
 echo $CMD
 $CMD
 
@@ -189,65 +159,23 @@ echo "$nbnodes nodes"
 
 
 
-#flash the dagroot
+
+#flash the motes
 i=0
-while [ $i -lt $nbnodes ]
-do
-    if [ $ARCHI == "m3" ]
-    then
-        CMD="iotlab-node --update $FW_BIN_DAGROOT -l $SITE,$ARCHI,${NODES[$i]} -i $EXPID"
-    else
-    #    CMD="iotlab-ssh  -i $EXPID flash-m3 $FW_BIN_DAGROOT -l $SITE,$ARCHI,${NODES[$i]}"
-        CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_DAGROOT_IOTLAB\" -l $SITE,$ARCHI,${NODES[$i]}"
-    fi
-    echo "----- Flashing the dagroot -------"
-    echo $CMD
-    $CMD > $REP_CURRENT/json_flash.dump
-    
-    #error??
-    REP=`pwd`
-    cd $REP_CURRENT
-    RESULT=`python cmd_result.py`
-    ERROR=`echo $RESULT | grep ko`
-    OK=`echo $RESULT | grep ok`
-    cd $REP
-    echo "$OK" | tr " " "\n"
-    #tmp file
-    rm $REP_CURRENT/json_flash.dump
+port=10000
 
-    ##everything is ok
-    if [ $? -eq 0 ] && [ -z "$ERROR" ]
-    then
-        port=10000
-        SSHPORTS="-L $port:m3-${NODES[$i]}:20000"
-        PORTS[0]=$port
-        break
-    fi
-
-    ((i++))
-done
-echo
-echo
-echo
-
-
-#flash the other motes
-
-#first mote in the list
-((i++))
 if [ $ARCHI == "m3" ]
 then
-    CMD="iotlab-node --update $FW_BIN_DEVICE -i $EXPID -l $SITE,$ARCHI,${NODES[$i]}"
+    CMD="iotlab-node --update $FW_BIN -i $EXPID -l $SITE,$ARCHI,${NODES[$i]}"
 else
-    CMD="iotlab-ssh -i $EXPID  flash-m3 $FW_BIN_DEVICE -l $SITE,$ARCHI,${NODES[$i]}"
-    CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_DEVICE_IOTLAB\" -l $SITE,$ARCHI,${NODES[$i]}"
+    CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_IOTLAB\" -l $SITE,$ARCHI,${NODES[$i]}"
 fi
 ((port++))
 SSHPORTS="$SSHPORTS -L $port:m3-${NODES[$i]}:20000"
 PORTS[${#PORTS[@]}]=$port
 ((i++))
 
-#remaining nodes (with a + to concatenate the command)"
+#arguments for the ssh port forwarding
 while [ $i -lt $nbnodes ]
 do
     CMD="$CMD+${NODES[$i]}"
