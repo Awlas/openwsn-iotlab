@@ -2,66 +2,32 @@
 
 REPO_FW=https://github.com/ftheoleyre/openwsn-fw.git
 REPO_SW=https://github.com/ftheoleyre/openvisualizer.git
+REPO_COAP=https://github.com/openwsn-berkeley/coap.git
+REPO_MQTT=https://github.com/eclipse/paho.mqtt.python
 
 # Current repository
 REP=`pwd`
 
-# Firmware
+
+
+# ------- PYTHON & COMPILATION -----------
+
+
+
+#Install Python
 echo "------------------------"
-echo "Clonning Firmwares"
-cd $REP
-sudo rm -Rf openwsn-fw
-sudo git clone $REPO_FW
+echo "Installing Tools"
+sudo apt-get install socat scons cmake
 
-# Software tools
-echo "-------------------------------"
-echo "Cloning openvisualizer tools"
-cd $REP
-sudo rm -Rf openvisualizer
-sudo git clone $REPO_SW
 
-# CoAP
+
+#Install Python
 echo "------------------------"
-echo "Installing CoAP option"
-cd $REP
-sudo rm -rf coap
-sudo git clone https://github.com/openwsn-berkeley/coap.git
+echo "Installing Python"
 
-
-#Install Cli Tools
-echo "------------------------"
-echo "Installing cli-tools"
-sudo rm -Rf cli-tools
-sudo git clone https://github.com/iot-lab/cli-tools.git
-cd cli-tools
-sudo python setup.py install
-
-
-# Packages
-echo "------------------------"
-echo "Installing Python packages"
-cd $REP
-cd openvisualizer
-python -r requirements.txt
-cd $REP
-sudo rm -rf paho.mqtt.python
-sudo git clone https://github.com/eclipse/paho.mqtt.python
-cd paho.mqtt.python
-sudo python setup.py install
-
-
-
-# iotlab ssh tools
-echo "-------------------------------"
-echo "IoTLab Clitools (ssh)"
-cd $REP
-sudo rm -Rf ssh-cli-tools
-git clone https://github.com/iot-lab/ssh-cli-tools.git
-cd ssh-cli-tools
-sudo pip install pip --upgrade
-sudo apt-get install virtualenvwrapper
-sudo apt-get install python-dev libssh2.1-dev
-sudo pip install .
+echo "Install Python3/pip -- default version for the system"
+sudo apt-get install virtualenvwrapper python3 python3-dev python3-pip  libssh2.1-dev libssl-dev
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 10
 
 
 
@@ -69,10 +35,92 @@ sudo pip install .
 echo "------------------------"
 echo "Installing arm"
 cd $REP
-wget https://launchpad.net/gcc-arm-embedded/4.9/4.9-2014-q4-major/+download/gcc-arm-none-eabi-4_9-2014q4-20141203-linux.tar.bz2
-tar xjvf gcc-arm-none-eabi-4_9-2014q4-20141203-linux.tar.bz2
-cd gcc-arm-none-eabi-4_9-2014q4
-BINARM=`pwd`
-echo "#ARM GCC" >> $HOME.bashrc
-echo "PATH=$PATH:$HOME/openwsn/gcc-arm-none-eabi/bin" >> $HOME.bashrc
+sudo apt-get install gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
 
+#echo "removing older gcc-arm 4_9-2014q4"
+#rm -Rf gcc-arm-none-eabi-4_9-2014q4*
+#wget gcc-arm-none-eabi-4_9-2014q4-20141203-linux.tar.bz2 https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update/+download/gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
+#bunzip2 gcc-arm-none-eabi-4_9-2014q4-20141203-linux.tar.bz2
+#tar -xvf gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar
+#rm gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar
+#sudo rm -Rf gcc-arm-none-eabi
+#mv gcc-arm-none-eabi-4_9-2014q4 gcc-arm-none-eabi
+#echo "#ARM GCC" >> $HOME/.bashrc
+#echo "PATH=$PATH:$HOME/openwsn/gcc-arm-none-eabi/bin" >> $HOME/.bashrc
+
+
+
+
+
+
+# ------- IOT-Lab SPECIFIC -----------
+
+
+#Install Cli Tools
+echo "---------------------------------------------"
+echo "Installing IoTLab Clitools (commands)"
+sudo rm -Rf cli-tools
+git clone https://github.com/iot-lab/cli-tools.git
+cd cli-tools
+sudo python setup.py install
+
+
+
+
+# iotlab ssh tools
+echo "-------------------------------"
+echo "Installing IoTLab Clitools (ssh)"
+cd $REP
+sudo rm -Rf ssh-cli-tools
+git clone https://github.com/iot-lab/ssh-cli-tools.git
+cd ssh-cli-tools
+sudo apt-get install virtualenvwrapper
+sudo pip install .
+
+
+
+# ------- OPENWSN SPECIFIC -----------
+
+# Firmware
+echo "------------------------"
+echo "Clonning Firmware"
+cd $REP
+sudo rm -Rf openwsn-fw
+git clone $REPO_FW
+
+
+
+# CoAP
+echo "------------------------"
+echo "Installing CoAP option"
+cd $REP
+sudo rm -rf coap
+git clone $REPO_COAP
+
+
+
+
+# Packages
+# Software tools
+echo "-------------------------------------------------"
+echo "Cloning openvisualizer tools and dependencies"
+cd $REP
+sudo rm -Rf openvisualizer
+git clone $REPO_SW
+cd openvisualizer
+pip install -r requirements.txt
+cd $REP
+sudo rm -rf paho.mqtt.python
+git clone $REPO_MQTT
+cd paho.mqtt.python
+sudo python setup.py install
+
+
+
+echo "-------------------------------------------------"
+echo "REQ"
+
+
+echo "You have still to register your iotlab credentials with the command"
+echo "iotlab-auth -u $USER -p PASSWORD"
+echo "and test everything with scripts/start_and_flash.sh"

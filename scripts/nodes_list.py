@@ -8,4 +8,4 @@ with open("json.dump", "r") as readfile:
 
 #pick the network address
 for node in nodes["items"]:
-    print node["network_address"]
+    print(node["network_address"])

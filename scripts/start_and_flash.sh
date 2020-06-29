@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #compiation & firmwares
-FW_SRC="../openwsn-fw-device"
+FW_SRC="../openwsn-fw"
 FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
 FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
 
@@ -166,7 +166,7 @@ port=10000
 
 if [ $ARCHI == "m3" ]
 then
-    CMD="iotlab-node --update $FW_BIN -i $EXPID -l $SITE,$ARCHI,${NODES[$i]}"
+    CMD="iotlab-node --flash $FW_BIN -i $EXPID -l $SITE,$ARCHI,${NODES[$i]}"
 else
     CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_IOTLAB\" -l $SITE,$ARCHI,${NODES[$i]}"
 fi
@@ -198,6 +198,7 @@ OK=`echo $RESULT | grep ok`
 cd $REP
 echo "$OK" | tr " " "\n"
 #tmp file
+cat $REP_CURRENT/json_flash.dump
 rm $REP_CURRENT/json_flash.dump
 
 
