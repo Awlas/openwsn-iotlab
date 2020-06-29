@@ -50,13 +50,6 @@ cd paho.mqtt.python
 sudo python setup.py install
 
 
-# Packages
-echo "------------------------"
-echo "Installing arm"
-cd $REP
-
-echo "You have to install gcc-arm-none-eabi (sudo apt install gcc-arm-none-eabi, or download the latest version at https://developer.arm.com/"
-
 
 # iotlab ssh tools
 echo "-------------------------------"
@@ -69,3 +62,17 @@ sudo pip install pip --upgrade
 sudo apt-get install virtualenvwrapper
 sudo apt-get install python-dev libssh2.1-dev
 sudo pip install .
+
+
+
+# Packages
+echo "------------------------"
+echo "Installing arm"
+cd $REP
+wget https://launchpad.net/gcc-arm-embedded/4.9/4.9-2014-q4-major/+download/gcc-arm-none-eabi-4_9-2014q4-20141203-linux.tar.bz2
+tar xjvf gcc-arm-none-eabi-4_9-2014q4-20141203-linux.tar.bz2
+cd gcc-arm-none-eabi-4_9-2014q4
+BINARM=`pwd`
+echo "#ARM GCC" >> $HOME.bashrc
+echo "PATH=$PATH:$HOME/openwsn/gcc-arm-none-eabi/bin" >> $HOME.bashrc
+
