@@ -8,7 +8,7 @@ FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
 #parameters for experiments
 USER=theoleyr
 SITE=strasbourg
-NAME="OVIZ"
+NAME="owsn"
 NBNODES=4
 DURATION=65
 
@@ -111,7 +111,8 @@ echo "------- Compilation ------"
 echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $FW_SRC
-CMD="scons board=$BOARD toolchain=armgcc dagroot=0 oos_openwsn"
+CMD="scons board=$BOARD toolchain=armgcc apps=cjoin,cexample oos_openwsn"
+#CMD="scons board=$BOARD toolchain=armgcc oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -120,18 +121,12 @@ then
 echo "Compilation error (device)"
 exit 6
 fi
-CMD="scp $FW_BIN $USER@$SITE.iot-lab.info:$FW_BIN_IOTLAB"
-echo $CMD
-$CMD
 
 
 
 echo
 echo
 echo
-
-
-
 
 
 
@@ -146,6 +141,9 @@ fi
 
 
 
+
+#Compilation
+echo "------- Flashing ------"
 
 
 #construct an array for the node
@@ -200,44 +198,36 @@ echo "$OK" | tr " " "\n"
 #tmp file
 cat $REP_CURRENT/json_flash.dump
 rm $REP_CURRENT/json_flash.dump
-
-
 echo
 echo
 
 
 
 
-#ssh forwarding
-echo "----- Forwarding the serial ports (ssh)  -------"
-CMD="killall ssh"
-echo $CMD
-$CMD
-echo $?
-CMD="ssh -fN $USER@$SITE.iot-lab.info $SSHPORTS"
-echo $CMD
-$CMD
-echo
-echo
-echo
 
-#Scat TUNNELING
-echo "----- SOCAT TUNNELING ------"
-sudo killall socat
-sleep 1;
-i=0
-for port in "${PORTS[@]}"
+
+
+
+# OpenViz server
+echo "----- OpenVisualizer ------"
+cd $REP_CURRENT
+cd ../openvisualizer
+
+CMD="sudo openv-server --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
+MAX=`expr $nbnodes - 1`
+for i in `seq 0 $MAX`;
 do
-    echo "tcpPort $port -> /dev/ttyUSB"$i
-    echo "sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port"
-    sudo socat PTY,raw,echo=0,link=/dev/ttyUSB"$i" tcp:127.0.0.1:$port &
-    ((i++))
+        CMD="$CMD $ARCHI-${NODES[$i]}.$SITE.iot-lab.info"
 done
+echo $CMD
+$CMD
 
-echo
-echo
-echo
+
+
+
+
 
 
 #end
 #iotlab-experiment stop -i $EXPID
+
