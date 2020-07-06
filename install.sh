@@ -108,7 +108,8 @@ cd $REP
 sudo rm -Rf openvisualizer
 git clone $REPO_SW
 cd openvisualizer
-pip install -r requirements.txt
+sudo pip install -r requirements.txt
+sudo pip install -e .
 cd $REP
 sudo rm -rf paho.mqtt.python
 git clone $REPO_MQTT
