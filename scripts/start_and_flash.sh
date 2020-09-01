@@ -7,7 +7,7 @@ FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
 
 #parameters for experiments
 USER=theoleyr
-SITE=strasbourg
+SITE=lille
 NAME="owsn"
 NBNODES=4
 DURATION=65
@@ -74,7 +74,7 @@ echo
 
 #get the correct site
 echo "----- Site Identification -------"
-CMD="iotlab-experiment get -i $EXPID -r"
+CMD="iotlab-experiment get -i $EXPID -n"
 echo $CMD
 $CMD > json.dump
 SITE=`python site_get.py | cut -d "." -f 1 | cut -d "-" -f 2 `
@@ -91,11 +91,12 @@ rm json.dump
 
 #EXperiment Identification
 #get the list of nodes
-CMD="iotlab-experiment get -i $EXPID -r"
-#echo $CMD
+echo "----- Nodes Identification -------"
+CMD="iotlab-experiment get -i $EXPID -n"
+echo $CMD
 $CMD > json.dump
 NODES_LIST=`python nodes_list.py | cut -d "." -f 1 | cut -d "-" -f 2 ` 
-echo "the site has been identified to $SITE"
+echo "the nodes have been identified to $NODES_LIST"
 #tmp file
 rm json.dump
 echo
