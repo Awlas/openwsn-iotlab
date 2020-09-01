@@ -112,8 +112,7 @@ echo "------- Compilation ------"
 echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $FW_SRC
-CMD="scons board=$BOARD toolchain=armgcc apps=cjoin,cexample oos_openwsn"
-#CMD="scons board=$BOARD toolchain=armgcc oos_openwsn"
+CMD="scons board=$BOARD toolchain=armgcc modules=coap,udp apps=cjoin,cexample oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -213,6 +212,11 @@ echo
 echo "----- OpenVisualizer ------"
 cd $REP_CURRENT
 cd ../openvisualizer
+
+echo "install the current version of Openvisualizer"
+CMD="sudo pip install -e ."
+echo $CMD
+$CMD
 
 CMD="sudo openv-server --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
 MAX=`expr $nbnodes - 1`
