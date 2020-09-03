@@ -19,6 +19,7 @@ ARCHI="m3"
 BOARD="iot-lab_M3"
 
 
+
 REP_CURRENT=`pwd`
 
 echo
@@ -26,11 +27,13 @@ echo
 echo
 
 
+# Check if we're root and re-execute if we're not.
+#[ `whoami` = root ] || { sudo "$0" "$@"; exit $?; }
 
 
 
 
-echo "----- searching for an existing running experiment -------"
+echo "----- search for an existing running experiment -------"
 CMD="iotlab-experiment get -e"
 $CMD > json.dump 2> /dev/null
 #cat json.dump
@@ -50,7 +53,7 @@ echo
 if [ -z	"$EXPID" ]
 then
 
-	echo "----- reserving one experiment -------"
+	echo "----- reserve one experiment -------"
 	CMD="iotlab-experiment submit -n $NAME -d $DURATION -l $NBNODES,archi=$ARCHI:at86rf231+site=$SITE"
 	echo $CMD
 	RES=`$CMD`
@@ -65,7 +68,7 @@ fi
 
 
 #wait the experiment starts runing
-echo "----- waiting the experiment is in running mode -------"
+echo "----- wait that the experiment is in running mode -------"
 iotlab-experiment wait -i $EXPID
 echo
 echo
@@ -143,7 +146,7 @@ fi
 
 
 #Compilation
-echo "------- Flashing ------"
+echo "------- Flash the Firmaware ------"
 
 
 #construct an array for the node
@@ -182,7 +185,7 @@ do
     PORTS[${#PORTS[@]}]=$port
     ((i++))
 done
-echo "----- Flashing the devices -------"
+echo "----- Flash the devices -------"
 echo $CMD
 $CMD > $REP_CURRENT/json_flash.dump
 
@@ -214,16 +217,60 @@ cd $REP_CURRENT
 cd ../openvisualizer
 
 echo "install the current version of Openvisualizer"
-CMD="sudo pip install -e ."
+CMD="pip install -e ."
 echo $CMD
-$CMD
+$CMD > /dev/null
 
-CMD="sudo openv-server --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
+
+CMD="openv-server --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
 MAX=`expr $nbnodes - 1`
 for i in `seq 0 $MAX`;
 do
         CMD="$CMD $ARCHI-${NODES[$i]}.$SITE.iot-lab.info"
 done
+#run in background
+CMD="$CMD"
+echo $CMD
+$CMD &
+PID_OPENVSERVER=$!
+echo "PID of openv-server to kill when the program exits: $PID_OPENVSERVER"
+
+
+#let the server start
+while [ -n "`openv-client motes | grep refused`" ]
+do
+    sleep 1
+    echo "openv-server not yet started"
+done
+
+
+
+
+
+
+
+# OpenViz client
+echo "----- Config after boot ------"
+# dagroot selection -> first mote (last 4 digits of the MAC address"
+echo "openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3"
+RES=`openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3`
+echo "setting mote '$RES' as dagroot"
+CMD="openv-client root $RES"
+echo $CMD
+$CMD
+
+
+
+#web interface
+openv-client view web
+
+
+
+
+# kill the server part
+echo "----- Stops openv-server ------"
+echo "kill openv-server (pid=$PID_OPENVSERVER)"
+CMD="kill $PID_OPENVSERVER"
 echo $CMD
 $CMD
 
