@@ -86,25 +86,34 @@ if [ -z "$SITE" ]
 then
 	exit 5
 fi
-#remove tmp file
-rm json.dump
-
-
+echo
+echo
+echo
 
 
 #EXperiment Identification
 #get the list of nodes
 echo "----- Nodes Identification -------"
-CMD="iotlab-experiment get -i $EXPID -n"
-echo $CMD
-$CMD > json.dump
-NODES_LIST=`python nodes_list.py | cut -d "." -f 1 | cut -d "-" -f 2 ` 
-echo "the nodes have been identified to $NODES_LIST"
+NODES_LIST=`python nodes_list.py | cut -d "." -f 1 | cut -d "-" -f 2 `
+echo "the nodes have been identified to"
+echo "$NODES_LIST"
 #tmp file
 rm json.dump
 echo
 echo
 echo
+
+
+#transform the list of nodes in an array
+nbnodes=0
+for N in $NODES_LIST
+do
+    NODES[$nbnodes]=$N
+    ((nbnodes++))
+done
+echo "$nbnodes nodes"
+
+
 
 
 
@@ -146,17 +155,8 @@ fi
 
 
 #Compilation
-echo "------- Flash the Firmaware ------"
+echo "------- Flash the devices ------"
 
-
-#construct an array for the node
-nbnodes=0
-for N in $NODES_LIST
-do
-    NODES[$nbnodes]=$N
-    ((nbnodes++))
-done
-echo "$nbnodes nodes"
 
 
 
@@ -167,30 +167,26 @@ port=10000
 
 if [ $ARCHI == "m3" ]
 then
-    CMD="iotlab-node --flash $FW_BIN -i $EXPID -l $SITE,$ARCHI,${NODES[$i]}"
+    CMD="iotlab-node --flash $FW_BIN -i $EXPID"
+    #by default, all the nodes, no need to specify the exhaustive list
+    #NB: same firmware for all the nodes. One will be slected at runtime as dagroot
+    #-l $SITE,$ARCHI,${NODES[$i]}"
 else
-    CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_IOTLAB\" -l $SITE,$ARCHI,${NODES[$i]}"
+    CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_IOTLAB\"
+    echo "be careful, not tested with the novel cli tools, remove the next "exit()" to test it"
+    exit
+    #-l $SITE,$ARCHI,${NODES[$i]}"
 fi
-((port++))
-SSHPORTS="$SSHPORTS -L $port:m3-${NODES[$i]}:20000"
-PORTS[${#PORTS[@]}]=$port
-((i++))
 
-#arguments for the ssh port forwarding
-while [ $i -lt $nbnodes ]
-do
-    CMD="$CMD+${NODES[$i]}"
-    ((port++))
-    SSHPORTS="$SSHPORTS -L $port:m3-${NODES[$i]}:20000"
-    PORTS[${#PORTS[@]}]=$port
-    ((i++))
-done
-echo "----- Flash the devices -------"
+
+#flash command
 echo $CMD
 $CMD > $REP_CURRENT/json_flash.dump
 
+    
+    
 
-#error??
+#parse the results for the flash command
 REP=`pwd`
 cd $REP_CURRENT
 RESULT=`python cmd_result.py`
@@ -209,8 +205,6 @@ echo
 
 
 
-
-
 # OpenViz server
 echo "----- OpenVisualizer ------"
 cd $REP_CURRENT
@@ -221,8 +215,8 @@ CMD="pip install -e ."
 echo $CMD
 $CMD > /dev/null
 
-
-CMD="openv-server --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
+#with opentun and -d for wireshark
+CMD="openv-server --opentun -d --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
 MAX=`expr $nbnodes - 1`
 for i in `seq 0 $MAX`;
 do
