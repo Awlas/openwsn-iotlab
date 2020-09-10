@@ -124,7 +124,7 @@ echo "------- Compilation ------"
 echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $FW_SRC
-CMD="scons board=$BOARD toolchain=armgcc modules=coap,udp apps=cjoin,cexample oos_openwsn"
+CMD="scons board=$BOARD toolchain=armgcc boardopt=printf modules=coap,udp apps=cjoin,cexample oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -215,8 +215,10 @@ CMD="pip install -e ."
 echo $CMD
 $CMD > /dev/null
 
-#with opentun and -d for wireshark
-CMD="openv-server --opentun -d --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
+#with opentun and -d for wireshark debug
+echo ""
+echo "starst Openvisualizer (server part)"
+CMD="openv-server --opentun --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
 MAX=`expr $nbnodes - 1`
 for i in `seq 0 $MAX`;
 do
@@ -244,6 +246,11 @@ done
 
 
 # OpenViz client
+echo "----- Force the reboot of the motes ------"
+CMD="iotlab-node --reset -i $EXPID"
+echo $CMD
+$CMD
+
 echo "----- Config after boot ------"
 # dagroot selection -> first mote (last 4 digits of the MAC address"
 echo "openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3"
@@ -264,7 +271,7 @@ openv-client view web
 # kill the server part
 echo "----- Stops openv-server ------"
 echo "kill openv-server (pid=$PID_OPENVSERVER)"
-CMD="kill $PID_OPENVSERVER"
+CMD="kill -SIGKILL $PID_OPENVSERVER"
 echo $CMD
 $CMD
 
