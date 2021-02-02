@@ -1,6 +1,14 @@
 #!/bin/bash
 
-#compiation & firmwares
+
+
+# saves the current directory to come back later here if needed
+REP_CURRENT=`pwd`
+
+
+
+
+#compilation & firmwares
 FW_SRC="../openwsn-fw"
 FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
 FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
@@ -27,11 +35,8 @@ DURATION=180
 #------ Simulation
 BOARD="python"
 TOOLCHAIN="gcc"
+TOPOLOGY="--load-topology $REP_CURRENT/topology-3nodes.json"
 
-
-
-# saves the current directory to come back later here if needed
-REP_CURRENT=`pwd`
 
 echo
 echo
@@ -53,7 +58,7 @@ echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $REP_CURRENT
 cd $FW_SRC
-CMD="scons board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample oos_openwsn"
+CMD="scons -j 4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -240,11 +245,13 @@ $CMD > /dev/null
 
 #with opentun and -d for wireshark debug
 # ------- FIT IOTLAB -----
+cd $REP_CURRENT
+OPTIONS="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --lconf $REP_CURRENT/trace.conf"
 if [[ "$BOARD" == "iot-lab"* ]]
 then
    echo ""
    echo "Starts Openvisualizer (server part)"
-   CMD="openv-server --opentun --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --iotlab-motes "
+   CMD="openv-server $OPTIONS --iotlab-motes "
    MAX=`expr $nbnodes - 1`
    for i in `seq 0 $MAX`;
    do
@@ -257,7 +264,7 @@ elif [[ "$BOARD" == "python" ]]
 then
    echo ""
    echo "Starts Openvisualizer (server part)"
-   CMD="openv-server --opentun --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --sim $NBNODES"
+   CMD="openv-server $OPTIONS --sim $NBNODES $TOPOLOGY"
    
 # --------- BUG
 else
@@ -287,6 +294,7 @@ done
 
 
 # ------- FIT IOTLAB -----
+cd $REP_CURRENT
 if [[ "$BOARD" == "iot-lab"* ]]
 then
    echo "----- Force the reboot of the motes ------"
@@ -296,20 +304,40 @@ then
 fi
 
 
-# OpenViz client
+
+
+#----------  OpenV client -------
 echo "----- Config after boot ------"
+cd $REP_CURRENT
+# --------- IOTLAB
 # dagroot selection -> first mote (last 4 digits of the MAC address"
-echo "openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3"
-RES=`openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3`
-echo "setting mote '$RES' as dagroot"
-CMD="openv-client root $RES"
+if [[ "$BOARD" == "iot-lab"* ]]
+then
+   echo "openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3"
+   RES=`openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3`
+   echo "setting mote '$RES' as dagroot"
+   CMD="openv-client root $RES"
+   echo $CMD
+   $CMD
+# ------- SIMULATION
+# nothing to do: dagroot already selected
+elif [[ "$BOARD" == "python" ]]
+then
+   echo "dagroot already selected"
+# --------- BUG
+else
+   echo "Unknown board"
+   exit 5
+fi
+
+
+
+
+
+#web interface (without a log message every time I get web request!)
+CMD="openv-client view web --debug ERROR"
 echo $CMD
 $CMD
-
-
-
-#web interface
-openv-client view web
 
 
 
