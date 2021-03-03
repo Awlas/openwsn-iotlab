@@ -21,11 +21,11 @@ DURATION=180
 
 # choice for the architecture
 # ------- m3 nodes (FIT IoTLab)
-#BOARD="iot-lab_M3"
-#TOOLCHAIN="armgcc"
-#ARCHI="m3"
-#NODES_LIST="357+347+337"
-#SITE=grenoble #strasbourg
+BOARD="iot-lab_M3"
+TOOLCHAIN="armgcc"
+ARCHI="m3"
+NODES_LIST="15+18+21+27"
+SITE=grenoble
 # ------- A8 nodes (FIT IoTLab)
 #BOARD="iot-lab_A8-M3"
 #TOOLCHAIN="armgcc"
@@ -33,9 +33,9 @@ DURATION=180
 #NODES_LIST="357+347+337"
 #SITE=strasbourg
 #------ Simulation
-BOARD="python"
-TOOLCHAIN="gcc"
-TOPOLOGY="--load-topology $REP_CURRENT/topology-3nodes.json"
+#BOARD="python"
+#TOOLCHAIN="gcc"
+#TOPOLOGY="--load-topology $REP_CURRENT/topology-3nodes.json"
 
 
 echo
@@ -58,7 +58,7 @@ echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $REP_CURRENT
 cd $FW_SRC
-CMD="scons -j 4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample oos_openwsn"
+CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -313,6 +313,7 @@ cd $REP_CURRENT
 # dagroot selection -> first mote (last 4 digits of the MAC address"
 if [[ "$BOARD" == "iot-lab"* ]]
 then
+   sleep 3
    echo "openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3"
    RES=`openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3`
    echo "setting mote '$RES' as dagroot"
@@ -332,13 +333,10 @@ fi
 
 
 
-
-
 #web interface (without a log message every time I get web request!)
 CMD="openv-client view web --debug ERROR"
 echo $CMD
 $CMD
-
 
 
 
@@ -348,9 +346,6 @@ echo "kill openv-server (pid=$PID_OPENVSERVER)"
 CMD="kill -SIGKILL $PID_OPENVSERVER"
 echo $CMD
 $CMD
-
-
-
 
 
 
