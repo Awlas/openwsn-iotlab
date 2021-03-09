@@ -4,7 +4,8 @@
 
 # saves the current directory to come back later here if needed
 REP_CURRENT=`pwd`
-
+temp_dir=$(mktemp -d)
+echo "directory for temporary files: $temp_dir"
 
 
 
@@ -21,11 +22,11 @@ DURATION=180
 
 # choice for the architecture
 # ------- m3 nodes (FIT IoTLab)
-#BOARD="iot-lab_M3"
-#TOOLCHAIN="armgcc"
-#ARCHI="m3"
-#NODES_LIST="15+20+25+30+35+40"
-#SITE=lille
+BOARD="iot-lab_M3"
+TOOLCHAIN="armgcc"
+ARCHI="m3"
+NODES_LIST="15+20+25+30+35+40"
+SITE=lille
 # ------- A8 nodes (FIT IoTLab)
 #BOARD="iot-lab_A8-M3"
 #TOOLCHAIN="armgcc"
@@ -33,9 +34,9 @@ DURATION=180
 #NODES_LIST="357+347+337"
 #SITE=strasbourg
 #------ Simulation
-BOARD="python"
-TOOLCHAIN="gcc"
-TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
+#BOARD="python"
+#TOOLCHAIN="gcc"
+#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
 
 
 echo
@@ -80,19 +81,17 @@ if [[ "$BOARD" == "iot-lab"* ]]
 then
    echo "----- search for an existing running experiment -------"
    cd $REP_CURRENT
-
    CMD="iotlab-experiment get -e"
-   $CMD > json.dump 2> /dev/null
+   tmpfileExp="$temp_dir/json-exp.dump"
+   $CMD > $tmpfileExp 2> /dev/null
    #cat json.dump
-   EXPID=`python helpers/expid_last_get.py 2> /dev/null | cut -d "." -f 1 | cut -d "-" -f 2`
+   EXPID=`python helpers/expid_last_get.py $tmpfileExp 2> /dev/null | cut -d "." -f 1 | cut -d "-" -f 2`
    if [ -z "$EXPID" ]
    then
       echo "No already experiment running"
    else
       echo "We found the experiment id: '$EXPID'"
    fi
-   #remove tmp file
-   rm json.dump
    echo
    echo
    echo
@@ -138,8 +137,9 @@ then
    cd $REP_CURRENT
    CMD="iotlab-experiment get -i $EXPID -n"
    echo $CMD
-   $CMD > json.dump
-   SITE=`python helpers/site_get.py | cut -d "." -f 1 | cut -d "-" -f 2 `
+   tmpfileSite="$temp_dir/json-site.dump"
+   $CMD > $tmpfileSite
+   SITE=`python helpers/site_get.py $tmpfileSite | cut -d "." -f 1 | cut -d "-" -f 2 `
    echo $SITE
    if [ -z "$SITE" ]
    then
@@ -154,11 +154,9 @@ then
    #get the list of nodes
    echo "----- Nodes Identification -------"
    cd $REP_CURRENT
-   NODES_LIST=`python helpers/nodes_list.py | cut -d "." -f 1 | cut -d "-" -f 2 `
+   NODES_LIST=`python helpers/nodes_list.py $tmpfileSite | cut -d "." -f 1 | cut -d "-" -f 2 `
    echo "the nodes have been identified to"
    echo "$NODES_LIST"
-   #tmp file
-   rm json.dump
    echo
    echo
    echo
@@ -210,23 +208,21 @@ then
 
 
    #flash command
+   tmpfileFlash="$temp_dir/json-flash.dump"
    echo $CMD
-   $CMD > $REP_CURRENT/json_flash.dump
-
-       
+   $CMD > $tmpfileFlash
        
 
    #parse the results for the flash command
    REP=`pwd`
    cd $REP_CURRENT
-   RESULT=`python helpers/cmd_result.py`
+   RESULT=`python helpers/flash_get.py $tmpfileFlash`
    ERROR=`echo $RESULT | grep ko`
    OK=`echo $RESULT | grep ok`
    cd $REP
    echo "$OK" | tr " " "\n"
    #tmp file
-   cat $REP_CURRENT/json_flash.dump
-   rm $REP_CURRENT/json_flash.dump
+   cat $tmpfileFlash
    echo
    echo
 
@@ -348,8 +344,10 @@ echo $CMD
 $CMD
 
 
-
-
+# temp files
+echo "--- Cleanup ----"
+echo "remove temporary files in directory $temp_dir"
+rm -Rf $temp_dir
 
 #end
 #iotlab-experiment stop -i $EXPID

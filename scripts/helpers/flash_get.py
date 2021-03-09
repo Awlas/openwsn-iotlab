@@ -1,10 +1,13 @@
 # parses JSON reply, and identifies the experiment id 
 
-import json
+import json, sys
 
-with open("json_flash.dump", "r") as readfile:
+#debug
+if len(sys.argv) != 2:
+    sys.exit("expid_last_get.py requires an argumnet (the json file), given: {0}".format(sys.argv))
+
+with open(sys.argv[1], "r") as readfile:
     infos=json.load(readfile)
-
 
 #pick the result for each name in the list
 if "0" in infos:
