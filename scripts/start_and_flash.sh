@@ -21,11 +21,11 @@ DURATION=180
 
 # choice for the architecture
 # ------- m3 nodes (FIT IoTLab)
-BOARD="iot-lab_M3"
-TOOLCHAIN="armgcc"
-ARCHI="m3"
-NODES_LIST="15+18+21+27"
-SITE=grenoble
+#BOARD="iot-lab_M3"
+#TOOLCHAIN="armgcc"
+#ARCHI="m3"
+#NODES_LIST="15+20+25+30+35+40"
+#SITE=lille
 # ------- A8 nodes (FIT IoTLab)
 #BOARD="iot-lab_A8-M3"
 #TOOLCHAIN="armgcc"
@@ -33,9 +33,9 @@ SITE=grenoble
 #NODES_LIST="357+347+337"
 #SITE=strasbourg
 #------ Simulation
-#BOARD="python"
-#TOOLCHAIN="gcc"
-#TOPOLOGY="--load-topology $REP_CURRENT/topology-3nodes.json"
+BOARD="python"
+TOOLCHAIN="gcc"
+TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
 
 
 echo
@@ -58,7 +58,7 @@ echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $REP_CURRENT
 cd $FW_SRC
-CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample oos_openwsn"
+CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample stackcfg=channel:12 oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -84,7 +84,7 @@ then
    CMD="iotlab-experiment get -e"
    $CMD > json.dump 2> /dev/null
    #cat json.dump
-   EXPID=`python expid_last_get.py 2> /dev/null | cut -d "." -f 1 | cut -d "-" -f 2`
+   EXPID=`python helpers/expid_last_get.py 2> /dev/null | cut -d "." -f 1 | cut -d "-" -f 2`
    if [ -z "$EXPID" ]
    then
       echo "No already experiment running"
@@ -139,7 +139,7 @@ then
    CMD="iotlab-experiment get -i $EXPID -n"
    echo $CMD
    $CMD > json.dump
-   SITE=`python site_get.py | cut -d "." -f 1 | cut -d "-" -f 2 `
+   SITE=`python helpers/site_get.py | cut -d "." -f 1 | cut -d "-" -f 2 `
    echo $SITE
    if [ -z "$SITE" ]
    then
@@ -154,7 +154,7 @@ then
    #get the list of nodes
    echo "----- Nodes Identification -------"
    cd $REP_CURRENT
-   NODES_LIST=`python nodes_list.py | cut -d "." -f 1 | cut -d "-" -f 2 `
+   NODES_LIST=`python helpers/nodes_list.py | cut -d "." -f 1 | cut -d "-" -f 2 `
    echo "the nodes have been identified to"
    echo "$NODES_LIST"
    #tmp file
@@ -219,7 +219,7 @@ then
    #parse the results for the flash command
    REP=`pwd`
    cd $REP_CURRENT
-   RESULT=`python cmd_result.py`
+   RESULT=`python helpers/cmd_result.py`
    ERROR=`echo $RESULT | grep ko`
    OK=`echo $RESULT | grep ok`
    cd $REP
@@ -246,7 +246,7 @@ $CMD > /dev/null
 #with opentun and -d for wireshark debug
 # ------- FIT IOTLAB -----
 cd $REP_CURRENT
-OPTIONS="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --lconf $REP_CURRENT/trace.conf"
+OPTIONS="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw" # --lconf $REP_CURRENT/loggers/logging.conf"
 if [[ "$BOARD" == "iot-lab"* ]]
 then
    echo ""
