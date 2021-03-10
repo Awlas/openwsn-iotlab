@@ -22,11 +22,11 @@ DURATION=180
 
 # choice for the architecture
 # ------- m3 nodes (FIT IoTLab)
-BOARD="iot-lab_M3"
-TOOLCHAIN="armgcc"
-ARCHI="m3"
-NODES_LIST="15+20+25+30+35+40"
-SITE=lille
+#BOARD="iot-lab_M3"
+#TOOLCHAIN="armgcc"
+#ARCHI="m3"
+#NODES_LIST="15+20+25+30+35+40"
+#SITE=lille
 # ------- A8 nodes (FIT IoTLab)
 #BOARD="iot-lab_A8-M3"
 #TOOLCHAIN="armgcc"
@@ -34,9 +34,9 @@ SITE=lille
 #NODES_LIST="357+347+337"
 #SITE=strasbourg
 #------ Simulation
-#BOARD="python"
-#TOOLCHAIN="gcc"
-#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
+BOARD="python"
+TOOLCHAIN="gcc"
+TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
 
 
 echo
@@ -242,7 +242,7 @@ $CMD > /dev/null
 #with opentun and -d for wireshark debug
 # ------- FIT IOTLAB -----
 cd $REP_CURRENT
-OPTIONS="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw" # --lconf $REP_CURRENT/loggers/logging.conf"
+OPTIONS="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --lconf $REP_CURRENT/loggers/logging.conf"
 if [[ "$BOARD" == "iot-lab"* ]]
 then
    echo ""
