@@ -329,7 +329,7 @@ fi
 
 
 
-#web interface (without a log message every time I get web request!)
+#web interface (without a log message every time I receive a web request!)
 CMD="openv-client view web --debug ERROR"
 echo $CMD
 $CMD
