@@ -22,11 +22,13 @@ DURATION=180
 
 # choice for the architecture
 # ------- m3 nodes (FIT IoTLab)
-#BOARD="iot-lab_M3"
-#TOOLCHAIN="armgcc"
-#ARCHI="m3"
-#NODES_LIST="15+20+25+30+35+40"
-#SITE=lille
+BOARD="iot-lab_M3"
+TOOLCHAIN="armgcc"
+ARCHI="m3"
+#NODES_LIST="1+5+12"
+#SITE=saclay
+NODES_LIST="21+26+31+36+41"
+SITE=lille
 # ------- A8 nodes (FIT IoTLab)
 #BOARD="iot-lab_A8-M3"
 #TOOLCHAIN="armgcc"
@@ -34,9 +36,9 @@ DURATION=180
 #NODES_LIST="357+347+337"
 #SITE=strasbourg
 #------ Simulation
-BOARD="python"
-TOOLCHAIN="gcc"
-TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
+#BOARD="python"
+#TOOLCHAIN="gcc"
+#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
 
 
 echo
@@ -59,7 +61,7 @@ echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $REP_CURRENT
 cd $FW_SRC
-CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample stackcfg=channel:12 oos_openwsn"
+CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample stackcfg=channel:15 oos_openwsn"
 echo $CMD
 $CMD
 #errors
