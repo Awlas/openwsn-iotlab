@@ -25,10 +25,17 @@ DURATION=180
 BOARD="iot-lab_M3"
 TOOLCHAIN="armgcc"
 ARCHI="m3"
-#NODES_LIST="1+5+12"
-#SITE=saclay
-NODES_LIST="21+26+31+36+41"
-SITE=lille
+#NODES_LIST="9+102+156+222+240+256"
+#SITE=lille
+NODES_LIST="179+192+202+203+251+252+294"
+NODES_LIST="180+200+220+240+260+280+300+320"
+NODES_LIST="181+185+190+195+200+205+210+215"
+NODES_LIST="81+91+101+112+121+131+141"
+SITE=grenoble
+#NODES_LIST="1+15+35+45+63"    # full mesh, qqs liens pas à 100%
+#SITE=strasbourg
+#NODES_LIST="1+15+35+45+55+69"
+#SITE=paris
 # ------- A8 nodes (FIT IoTLab)
 #BOARD="iot-lab_A8-M3"
 #TOOLCHAIN="armgcc"
@@ -38,8 +45,10 @@ SITE=lille
 #------ Simulation
 #BOARD="python"
 #TOOLCHAIN="gcc"
-#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
-
+#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-4nodes.json"
+#faster?
+#OPTION="stackcfg=channel:15"
+OPTION=""
 
 echo
 echo
@@ -61,7 +70,7 @@ echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $REP_CURRENT
 cd $FW_SRC
-CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample stackcfg=channel:15 oos_openwsn"
+CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample $OPTION oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -312,8 +321,8 @@ cd $REP_CURRENT
 if [[ "$BOARD" == "iot-lab"* ]]
 then
    sleep 3
-   echo "openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3"
-   RES=`openv-client motes | grep Ok | head -n 1 | cut -d '|' -f 3`
+   echo "openv-client motes | grep Ok | cut -d '|' -f 3 | sort | head -n 1"
+   RES=`openv-client motes | grep Ok | cut -d '|' -f 3 | sort | head -n 1`
    echo "setting mote '$RES' as dagroot"
    CMD="openv-client root $RES"
    echo $CMD
