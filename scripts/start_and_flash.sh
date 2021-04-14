@@ -27,10 +27,9 @@ TOOLCHAIN="armgcc"
 ARCHI="m3"
 #NODES_LIST="9+102+156+222+240+256"
 #SITE=lille
-NODES_LIST="179+192+202+203+251+252+294"
-NODES_LIST="180+200+220+240+260+280+300+320"
-NODES_LIST="181+185+190+195+200+205+210+215"
-NODES_LIST="81+91+101+112+121+131+141"
+NODES_LIST="81+91+103+112+121+131+141"
+NODES_LIST="104+114+124+134+144+154"
+NODES_LIST="140+145+150+157"
 SITE=grenoble
 #NODES_LIST="1+15+35+45+63"    # full mesh, qqs liens pas à 100%
 #SITE=strasbourg
@@ -290,8 +289,13 @@ echo "PID of openv-server to kill when the program exits: $PID_OPENVSERVER"
 #let the server start
 while [ -n "`openv-client motes | grep refused`" ]
 do
-    sleep 1
-    echo "openv-server not yet started"
+    sleep 1    
+    if [ -n "$PID_OPENVSERVER" -a -e /proc/$PID_OPENVSERVER ]
+    then
+        echo "openv-server not yet started"
+    else
+        exit 4
+    fi
 done
 
 
@@ -340,22 +344,24 @@ fi
 
 
 
-#web interface (without a log message every time I receive a web request!)
-CMD="openv-client view web --debug ERROR"
-echo $CMD
-$CMD
+#server still running?
+if [ -n "$PID_OPENVSERVER" -a -e /proc/$PID_OPENVSERVER ];
+then
+    #web interface (without a log message every time I receive a web request!)
+    CMD="openv-client view web --debug ERROR"
+    echo $CMD
+    $CMD
+    
+    # kill the server part
+    echo "----- Stops openv-server ------"
+    echo "kill openv-server (pid=$PID_OPENVSERVER)"
+    CMD="kill -SIGKILL $PID_OPENVSERVER"
+    echo $CMD
+    $CMD
+fi
 
 
-
-# kill the server part
-echo "----- Stops openv-server ------"
-echo "kill openv-server (pid=$PID_OPENVSERVER)"
-CMD="kill -SIGKILL $PID_OPENVSERVER"
-echo $CMD
-$CMD
-
-
-# temp files
+# flush temp files
 echo "--- Cleanup ----"
 echo "remove temporary files in directory $temp_dir"
 rm -Rf $temp_dir
