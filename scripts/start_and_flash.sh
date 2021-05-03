@@ -10,9 +10,41 @@ echo "directory for temporary files: $temp_dir"
 
 
 #compilation & firmwares
+SW_SRC="../openvisualizer"
+SW_GIT_VERSION="e039a05"
 FW_SRC="../openwsn-fw"
+FW_GIT_VERSION="b567368f"
 FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
 FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
+
+
+#----- git versions verification
+#git rev-parse --short HEAD
+if [ -n $SW_GIT_VERSION ]
+then
+    cd $SW_SRC
+    if [ "`git rev-parse --short HEAD`" != "$SW_GIT_VERSION" ]
+    then
+        echo "the git version for software is not the right one"
+        echo "REAL: `git rev-parse --short HEAD`"
+        echo "EXPECTED: $SW_GIT_VERSION"
+        exit 4
+    fi
+fi
+cd $REP_CURRENT
+if [ -n "$FW_GIT_VERSION" ]
+then
+    cd $FW_SRC
+    if [ "`git rev-parse --short HEAD`" != "$FW_GIT_VERSION" ]
+    then
+        echo "the git version for firmware is not the right one"
+        echo "REAL: `git rev-parse --short HEAD`"
+            echo "EXPECTED: $FW_GIT_VERSION"
+        exit 4
+    fi
+fi
+cd $REP_CURRENT
+
 
 #parameters for experiments
 USER=theoleyr
@@ -20,21 +52,18 @@ NAME="owsn-cca"
 NBNODES=3
 DURATION=180
 
+
 # choice for the architecture
 # ------- m3 nodes (FIT IoTLab)
 BOARD="iot-lab_M3"
 TOOLCHAIN="armgcc"
 ARCHI="m3"
-#NODES_LIST="9+102+156+222+240+256"
-#SITE=lille
-NODES_LIST="81+91+103+112+121+131+141"
-NODES_LIST="104+114+124+134+144+154"
-NODES_LIST="140+145+150+157"
 SITE=grenoble
-#NODES_LIST="1+15+35+45+63"    # full mesh, qqs liens pas à 100%
-#SITE=strasbourg
-#NODES_LIST="1+15+35+45+55+69"
-#SITE=paris
+NODES_LIST="213+223"  # corner
+DAGROOT="204"
+#204+222+244 (milieu)
+#193+203+211  (corner)
+#94+99+127  (gauche toute)
 # ------- A8 nodes (FIT IoTLab)
 #BOARD="iot-lab_A8-M3"
 #TOOLCHAIN="armgcc"
@@ -44,10 +73,11 @@ SITE=grenoble
 #------ Simulation
 #BOARD="python"
 #TOOLCHAIN="gcc"
-#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-4nodes.json"
-#faster?
-#OPTION="stackcfg=channel:15"
-OPTION=""
+#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
+#fast discovery (does it work?)
+#OPTION="stackcfg=channel:18"
+COMPIL_OPTIONS="boardopt=printf modules=coap,udp apps=cjoin,cexample scheduleopt=anycast,lowestrankfirst debugopt=CCA,schedule stackcfg=badmaxrssi:100,goodminrssi:100"
+
 
 echo
 echo
@@ -69,7 +99,7 @@ echo " Compiling firmware..."
 echo "Directory $FW_SRC"
 cd $REP_CURRENT
 cd $FW_SRC
-CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN boardopt=printf modules=coap,udp apps=cjoin,cexample $OPTION oos_openwsn"
+CMD="scons -j4 board=$BOARD toolchain=$TOOLCHAIN $COMPIL_OPTIONS oos_openwsn"
 echo $CMD
 $CMD
 #errors
@@ -114,7 +144,7 @@ then
       then
          CMD="iotlab-experiment submit -n $NAME -d $DURATION -l $NBNODES,archi=$ARCHI:at86rf231+site=$SITE"
       else
-         CMD="iotlab-experiment submit -n $NAME -d $DURATION -l $SITE,$ARCHI,$NODES_LIST"
+         CMD="iotlab-experiment submit -n $NAME -d $DURATION -l $SITE,$ARCHI,$NODES_LIST+$DAGROOT"
       fi
       echo $CMD
       RES=`$CMD`
@@ -164,7 +194,7 @@ then
    #get the list of nodes
    echo "----- Nodes Identification -------"
    cd $REP_CURRENT
-   NODES_LIST=`python helpers/nodes_list.py $tmpfileSite | cut -d "." -f 1 | cut -d "-" -f 2 `
+   NODES_LIST=`python helpers/nodes_list.py $tmpfileSite | cut -d "." -f 1 | cut -d "-" -f 2 | sort -g `
    echo "the nodes have been identified to"
    echo "$NODES_LIST"
    echo
@@ -208,11 +238,15 @@ then
        #by default, all the nodes, no need to specify the exhaustive list
        #NB: same firmware for all the nodes. One will be slected at runtime as dagroot
        #-l $SITE,$ARCHI,${NODES[$i]}"
-   else
+   elif [ "$ARCHI" == "a8" ]
+   then
        CMD="iotlab-ssh -i $EXPID --verbose run-cmd \"flash_a8_m3 $FW_BIN_IOTLAB\"
        echo "be careful, not tested with the novel cli tools, remove the next "exit()" to test it"
        exit
        #-l $SITE,$ARCHI,${NODES[$i]}"
+   else
+      echo "Unknown architecture:  $ARCHI"
+      exit 4
    fi
 
 
@@ -252,12 +286,12 @@ $CMD > /dev/null
 #with opentun and -d for wireshark debug
 # ------- FIT IOTLAB -----
 cd $REP_CURRENT
-OPTIONS="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --lconf $REP_CURRENT/loggers/logging.conf"
+OPENVIS_OPTIONS="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw --lconf $REP_CURRENT/loggers/logging.conf"
 if [[ "$BOARD" == "iot-lab"* ]]
 then
    echo ""
    echo "Starts Openvisualizer (server part)"
-   CMD="openv-server $OPTIONS --iotlab-motes "
+   CMD="openv-server $OPENVIS_OPTIONS --iotlab-motes "
    MAX=`expr $nbnodes - 1`
    for i in `seq 0 $MAX`;
    do
@@ -270,7 +304,7 @@ elif [[ "$BOARD" == "python" ]]
 then
    echo ""
    echo "Starts Openvisualizer (server part)"
-   CMD="openv-server $OPTIONS --sim $NBNODES $TOPOLOGY"
+   CMD="openv-server $OPENVIS_OPTIONS --sim $NBNODES $TOPOLOGY"
    
 # --------- BUG
 else
@@ -294,6 +328,7 @@ do
     then
         echo "openv-server not yet started"
     else
+        echo "openv-server has stopped (critical)"
         exit 4
     fi
 done
@@ -321,21 +356,37 @@ fi
 echo "----- Config after boot ------"
 cd $REP_CURRENT
 # --------- IOTLAB
-# dagroot selection -> first mote (last 4 digits of the MAC address"
 if [[ "$BOARD" == "iot-lab"* ]]
 then
    sleep 3
-   echo "openv-client motes | grep Ok | cut -d '|' -f 3 | sort | head -n 1"
-   RES=`openv-client motes | grep Ok | cut -d '|' -f 3 | sort | head -n 1`
-   echo "setting mote '$RES' as dagroot"
-   CMD="openv-client root $RES"
-   echo $CMD
-   $CMD
+   CODERET=2
+   while [ $CODERET -ne "0" ]
+   do
+       echo "openv-client motes | grep Ok | cut -d '|' -f 3 | grep $DAGROOT"
+       MOTENAME=`openv-client motes | grep Ok | cut -d '|' -f 3 | grep $DAGROOT`
+       
+       if [ -z "$MOTENAME" ]
+       then
+            echo "the dagroot ($DAGROOT) is not part of the nodes' list"
+            exit 5
+       fi
+       
+       echo "setting mote '$MOTENAME' as dagroot"
+       CMD="openv-client root $MOTENAME"
+       echo $CMD
+       $CMD
+       CODERET=$?
+       
+       if [ $CODERET -ne "0" ]
+       then
+            echo "dagroot set: failed, retry"
+       fi
+    done
 # ------- SIMULATION
 # nothing to do: dagroot already selected
 elif [[ "$BOARD" == "python" ]]
 then
-   echo "dagroot already selected"
+   echo "dagroot already selected automatically (first mote = 001)"
 # --------- BUG
 else
    echo "Unknown board"
