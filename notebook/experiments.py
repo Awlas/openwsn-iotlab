@@ -70,7 +70,10 @@ def root_verif():
 def compilation_firmware(config):
     cmd="scons board=" + config['board'] + " toolchain=" + config['toolchain'] + " "
     cmd=cmd +" boardopt=printf modules=coap,udp apps=cjoin,cexample debugopt=CCA,schedule "
-    cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
+    if (config['anycast'] and config['lowestrankfirst']):
+        cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
+    elif (config['anycast']):
+        cmd=cmd + " scheduleopt=anycast "
     cmd=cmd + " stackcfg=badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
     cmd=cmd + " oos_openwsn "
     
