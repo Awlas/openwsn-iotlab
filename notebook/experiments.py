@@ -94,37 +94,52 @@ def get_running_id(config):
         process = run_command(cmd=cmd)
         output = process.stdout.read()
         
-        infos=json.loads(output)
-        exp_site=infos["items"][0]["site"]
-        if (config['site'] != exp_site):
-            print("the site of the running experiment doesn't match: {0} != {1}".format(config['site'], exp_site))
-        
-        #nodes identification
-        print("Running nodes:")
-        for node in infos["items"]:
-            print("  -> {0}".format(node["network_address"]))
-        print("Be careful: this list must be equal to:")
-        print("  -> dagroot(s): {0}".format(config['dagroots_list']))
-        print("  -> node(s): {0}".format(config['nodes_list']))
-        return(exp_id_running)
-        
     except:
+        print("error {0}".format(sys.exc_info()[0]))
         print("No running experiment")
-        return(None)
+        return
+        #nothing returned
     
+    #to verify that the experiment is matching with my params
+    infos=json.loads(output)
+    exp_site=infos["items"][0]["site"]
+    if (config['site'] != exp_site):
+        print("the site of the running experiment doesn't match: {0} != {1}".format(config['site'], exp_site))
+    
+    #nodes identification
+    print("Running nodes:")
+    for node in infos["items"]:
+        print("  -> {0}".format(node["network_address"]))
+        sp = node["network_address"].split(".")
+        sp2 = sp[0].split("-")
+        node_id = int(sp2[1])
+        if node_id not in config['dagroots_list']:
+            if node_id not in config['nodes_list']:
+                print("     {0} is present neither in {1} nor in {2}".format(
+                    sp2[1],
+                    config['dagroots_list'],
+                    config['nodes_list']
+                ))
+                return
+            else:
+                print("     {0} is a node (in {1})".format(node_id, config['nodes_list']))
+        else:
+            print("     {0} is a dagroot (in {1})".format(node_id, config['dagroots_list']))
+
+    return(exp_id_running)
 
 
 # start a novel experiment with the right config
 def reserve(config):
     exp_id_running=0
     cmd= "iotlab-experiment submit " + " -n "+config['exp_name']
-    cmd=cmd + " -d "+ config['duration']
+    cmd=cmd + " -d "+ config['exp_duration']
     cmd=cmd + " -l "+ config['site'] + "," + config['archi'] + ","
-    for i in range(len(exp_dagroots_list)):    
+    for i in range(len(config['dagroots_list'])):
         if ( i != 0 ):
             cmd=cmd+"+"    
-        cmd= cmd + str(exp_dagroots_list[i])
-    for node in exp_nodes_list :
+        cmd= cmd + str(config['dagroots_list'][i])
+    for node in config['nodes_list'] :
         cmd= cmd + "+" + str(node)
     
     print(cmd)
@@ -132,8 +147,8 @@ def reserve(config):
     output = process.stdout.read()
     print(output)
     infos=json.loads(output)
-    exp_id_running=infos["id"]    
-
+    exp_id_running=infos["id"]
+    return(exp_id_running)
 
 
 # waits that the id is running
@@ -199,35 +214,35 @@ def openvisualizer_create_conf_file(config):
 
     file.write("[handler_std]\n")
     file.write("class=logging.FileHandler\n")
-    file.write("args=('"+config['path_tmp']+"/openv-server.log', 'w')\n")
+    file.write("args=('"+config['path_results']+"/openv-server.log', 'w')\n")
     file.write("formatter=std\n\n")
 
     file.write("[handler_errors]\n")
     file.write("class=logging.FileHandler\n")
-    file.write("args=('"+config['path_tmp']+"/openv-server-errors.log', 'w')\n")
+    file.write("args=('"+config['path_results']+"/openv-server-errors.log', 'w')\n")
     file.write("level=ERROR\n")
     file.write("formatter=std\n\n")
 
     file.write("[handler_success]\n")
     file.write("class=logging.FileHandler\n")
-    file.write("args=('"+config['path_tmp']+"/openv-server-success.log', 'w')\n")
+    file.write("args=('"+config['path_results']+"/openv-server-success.log', 'w')\n")
     file.write("level=SUCCESS\n")
     file.write("formatter=std\n\n")
 
     file.write("[handler_info]\n")
     file.write("class=logging.FileHandler\n")
-    file.write("args=('"+config['path_tmp']+"/openv-server-info.log', 'w')\n")
+    file.write("args=('"+config['path_results']+"/openv-server-info.log', 'w')\n")
     file.write("level=INFO\n")
     file.write("formatter=std\n\n")
 
     file.write("[handler_all]\n")
     file.write("class=logging.FileHandler\n")
-    file.write("args=('"+config['path_tmp']+"/openv-server-all.log', 'w')\n")
+    file.write("args=('"+config['path_results']+"/openv-server-all.log', 'w')\n")
     file.write("formatter=std\n\n")
 
     file.write("[handler_html]\n")
     file.write("class=logging.FileHandler\n")
-    file.write("args=('"+config['path_tmp']+"/openv-server-all.html.log', 'w')\n")
+    file.write("args=('"+config['path_results']+"/openv-server-all.html.log', 'w')\n")
     file.write("formatter=console\n\n")
 
     #constant end
@@ -285,7 +300,7 @@ def openvisualizer_start(config):
         time.sleep(2)
     print("Openvisualizer seems correctly running")
 
-
+    return(t_openvisualizer)
 
 
 #start the web client part
@@ -298,6 +313,7 @@ def openwebserver_start(config):
     t_openwebserver.start()
     print("Thread {0} started, pid {1}".format(t_openwebserver, os.getpid()))
 
+    return(t_openwebserver)
 
 
 #reboot all the motes (if some have been already selected dagroot for an unkwnon reason)

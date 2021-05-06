@@ -27,14 +27,26 @@ def configuration_set():
     config['path_initial'] = os.getcwd()
     print ("Inital path: {0}".format(config['path_initial']))
     
-    #tmp files
-    config['path_tmp'] = tempfile.mkdtemp(prefix="openwsn-")
-    print("Temporary path: {0} ".format(config['path_tmp']))
+    #final results
+    config['path_results_root'] = "/home/theoleyre/owsn-results/"
+    config['path_results_root_crash'] = config['path_results_root'] + "/crash"
+    os.makedirs(config['path_results_root_crash'], exist_ok=True)
+    it = os.listdir(config['path_results_root'])
+    while (True):
+        config['path_results'] = "owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        print("List of existing results: {0}".format(it))
+        if (config['path_results'] not in it):
+            break;
+        print("{0} laready exists, find another directory name.".format(config['path_results']))
+    config['path_results'] = config['path_results_root'] + config['path_results']
+    os.makedirs(config['path_results'])
+    print("Results Path {0}".format(config['path_results']))
 
+    
     # Metadata for experiments
     config['user']="theoleyr"
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-    config['exp_duration']="180"
+    config['exp_duration']="30"
     config['exp_resume']=True
 
     # Parameters of the experiment
@@ -46,7 +58,7 @@ def configuration_set():
     config['dagroots_list']=[ 43 ]
 
     #openvisualizer configuration (output + 2 inputs)
-    config['conf_file']= config['path_tmp'] + "/logging.conf"
+    config['conf_file']= config['path_results'] + "/logging.conf"
     config['conf_file_start']= config['path_initial'] + "/loggers/logging_start.conf"
     config['conf_file_end']= config['path_initial'] + "/loggers/logging_end.conf"
 
@@ -84,16 +96,25 @@ def kill_all(sig, frame):
 
     print_header("Cleanup")
   
-    print("Destroys the tmp directoy {0} (has to be rather moved)".format(config['path_tmp']))
-    shutil.rmtree(config['path_tmp'])
-    
+    if (sig == signal.SIGUSR1):
+        print("Everything was ok")
+        file = open(config['path_results'] + "/_ok.txt", 'w')
+        file.write("ok\n")
+        file.close()
+    else:
+        print("Something went wrong -> move the files {0} in {1}". format(config['path_results'], config['path_results_root']+"crash"))
+        shutil.move(config['path_results'], config['path_results_root_crash'])
+
     process = psutil.Process(os.getpid())
     for proc in process.children(recursive=True):
         print("killing {0}".format(proc))
         proc.kill()
         print("..killed")
-    sys.exit(0)
-
+    if (sig == signal.SIGINT):
+        sys.exit(0)
+    else:
+        sys.exit(3)
+ 
 
 
 
@@ -104,6 +125,8 @@ print_header("Initialization")
 
 #protection against control+c (or called via a signal at the end)
 signal.signal(signal.SIGINT, kill_all)
+signal.signal(signal.SIGUSR1, kill_all)
+
 
 # initialiation
 experiments.root_verif()
@@ -119,12 +142,10 @@ experiments.openvisualizer_install(config)
 print_header("Reservation (experiment)")
 if ( config['exp_resume'] == True):
     exp_id = experiments.get_running_id(config);
-    
-try:
+if exp_id is not None:
     print("Resume the experiment id {0}".format(exp_id))
-    
-except:
-    experiments.reserve(config)
+else:
+    exp_id = experiments.reserve(config)
 experiments.wait_running(exp_id)
 
 
@@ -147,15 +168,15 @@ experiments.flashing_motes(exp_id, config)
 print_header("Openvizualiser")
 
 experiments.openvisualizer_create_conf_file(config)
-experiments.openvisualizer_start(config)
+t_openvisualizer = experiments.openvisualizer_start(config)
 
 
 
 
-# ---- Openweb server ----
+# ---- Openweb server (optional, for debuging via a web interface) ----
 
-print_header("Openweb server")
-experiments.openwebserver_start(config)
+#print_header("Openweb server")
+#t_openwebserver = experiments.openwebserver_start(config)
 
 
 
@@ -173,6 +194,25 @@ print_header("Execution")
 print("gpid me: {0}".format(os.getpgid(os.getpid())))
 print("pid me: {0}".format(os.getpid()))
 
-time.sleep(int(config['exp_duration']))
-os.kill(os.getpid(), signal.SIGINT)
+print("nb threads = {0}".format(threading.active_count()))
+
+#every second, let us verify that the openvizualizer thread is still alive
+#TODO: transform minutes in seconds
+counter = 0
+while (t_openvisualizer.is_alive()):
+    print("thread {0} is alive, {1}<{2}".format(t_openvisualizer, counter, int(config['exp_duration'])))
+    counter = counter + 1
+    if (counter >= int(config['exp_duration'])):
+        break;
+    time.sleep(1)
+    
+
+print("nb seconds runtime: {0}".format(counter))
+
+
+#time.sleep(60 * int(config['exp_duration']))
+if (counter >= int(config['exp_duration'])):
+    os.kill(os.getpid(), signal.SIGUSR1)
+else:
+    os.kill(os.getpid(), signal.SIGINT)
 
