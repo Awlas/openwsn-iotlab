@@ -56,7 +56,7 @@ def configuration_set():
     if (os.path.exists(config['code_sw_src']) == False):
         print("{0} does not exist".format(config['code_sw_src']))
         exit(-4)
-    config['code_sw_gitversion']="e039a05"
+    config['code_sw_gitversion']="525b684"
 
     # firmware part
     config['code_fw_src']= config['path_initial'] + "/../openwsn-fw/"

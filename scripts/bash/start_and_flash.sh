@@ -10,9 +10,9 @@ echo "directory for temporary files: $temp_dir"
 
 
 #compilation & firmwares
-SW_SRC="../openvisualizer"
-SW_GIT_VERSION="e039a05"
-FW_SRC="../openwsn-fw"
+SW_SRC="../../openvisualizer"
+SW_GIT_VERSION="525b684"
+FW_SRC="../../openwsn-fw"
 FW_GIT_VERSION="515eafa7"
 FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
 FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
@@ -276,7 +276,7 @@ fi
 # OpenViz server
 echo "----- OpenVisualizer ------"
 cd $REP_CURRENT
-cd ../openvisualizer
+cd $SW_SRC
 
 echo "install the current version of Openvisualizer"
 CMD="pip install -e ."
