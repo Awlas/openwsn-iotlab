@@ -1,50 +1,64 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
 
+#files
+from subprocess import Popen, PIPE, STDOUT
 
+# format
 import string
-import random
-import os
-from subprocess import Popen, PIPE, STDOUT, TimeoutExpired
+import json
+
+# multiprocess
 import threading
-import psutil
+
+#systems
+import os
 import sys
-import json, sys
+import sys
 import time
-import sys
-import signal
-import tempfile
-import shutil
+
 
 
 
 # -----  Run external commands ---
 
 #Run an extern command and returns the stdout
-def run_command(cmd, path=None, shell=True):
-    process = Popen(cmd, preexec_fn=os.setsid, shell=shell, stdin=None, stdout=PIPE, stderr=PIPE, close_fds=True, cwd=path, encoding='utf-8', errors='replace', bufsize=1)
+def run_command(cmd, timeout=0, path=None):
+    
+    process = Popen(cmd, preexec_fn=os.setsid, shell=True, stdout=PIPE, stderr=PIPE, close_fds=True, cwd=path)
+    
+    #after the timeout, kill all the children (Shell=True)
+    if (timeout > 0):
+        try:
+            process.wait(timeout=timeout)
+        except:
+            print("run_command(), timeout expiration, pid {0}".format(process.pid))
+                
+            import psutil
+            process_me = psutil.Process(process.pid)
+            for proc in process_me.children(recursive=True):
+                print("killing {0}".format(proc))
+                proc.kill()
+                print("..killed")
+      
+    else:
+        process.wait()
+        
+        
+    #if (process.returncode != 0):
+    #    print("Return code after run() {0}".format(process.returncode))
     return(process)
+    
 
 #Run an extern command and prints the stdout
-def run_command_print(cmd, path=None, shell=True):
-    process = run_command(cmd, path, shell)
-
+def run_command_print(cmd, timeout=0, path=None):
+    process = run_command(cmd, timeout, path)
     
-    while process.poll() is None:
-        out, err = process.communicate()
-        if out is not None:
-            print(out)
-        if err is not None:
-            print(err)
+    print("OUT= {0}".format(process.stdout.read()))
+    print("ERR= {0}".format(process.stderr.read()))
 
-    if (process.wait() != 0):
-        print("... shell command non zero retcode")
-    else:
-        print("... shell command finished")
-
-
+    return(process)
 
 
 #sudo verification
@@ -77,7 +91,8 @@ def compilation_firmware(config):
     cmd=cmd + " stackcfg=badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
     cmd=cmd + " oos_openwsn "
     
-    run_command_print(cmd=cmd, path=config['code_fw_src'], shell=True)
+    print(cmd)
+    run_command_print(cmd=cmd, path=config['code_fw_src'])
 
 
 
@@ -96,10 +111,11 @@ def get_running_id(config):
         cmd="iotlab-experiment get -i " + str(exp_id_running) + " -n"
         process = run_command(cmd=cmd)
         output = process.stdout.read()
-        
-    except:
-        print("error {0}".format(sys.exc_info()[0]))
+    except KeyError:
         print("No running experiment")
+        return
+    except:
+        print("No running experiment, error {0}".format(sys.exc_info()[0]))
         return
         #nothing returned
     
@@ -110,7 +126,7 @@ def get_running_id(config):
         print("the site of the running experiment doesn't match: {0} != {1}".format(config['site'], exp_site))
     
     #nodes identification
-    print("Running nodes:")
+    print("Verification that the list of nodes is correct for the exp_id {0}".format(exp_id_running))
     for node in infos["items"]:
         print("  -> {0}".format(node["network_address"]))
         sp = node["network_address"].split(".")
@@ -136,7 +152,7 @@ def get_running_id(config):
 def reserve(config):
     exp_id_running=0
     cmd= "iotlab-experiment submit " + " -n "+config['exp_name']
-    cmd=cmd + " -d "+ config['exp_duration']
+    cmd=cmd + " -d "+ str(config['exp_duration'])
     cmd=cmd + " -l "+ config['site'] + "," + config['archi'] + ","
     for i in range(len(config['dagroots_list'])):
         if ( i != 0 ):
@@ -192,11 +208,13 @@ def flashing_motes(exp_id, config):
 #install the last version of OV (present in the code_sw_src directory
 def openvisualizer_install(config):
     print("Install the current version of Openvisualizer")
-    cmd="pip install -e ."
+    cmd="pip2 install -e ."
     process = run_command(cmd=cmd, path=config['code_sw_src'])
     output = process.stderr.read()
     print(output)
-    if (process.wait() != 0):
+    
+    
+    if (process.returncode != 0):
         print("Installation of openvisualizer has failed")
         exit(-7)
     else:
@@ -283,11 +301,14 @@ def openvisualizer_start(config):
     except NameError:
         print("No running openvisualizer process")
     except:
-        print("No running openvisualizer process, error {0}".format(sys.exc_info()[0]))
+        print("openvisualizer_start, No running openvisualizer process, error {0}".format(sys.exc_info()[0]))
         
     #Running the OV application
     print("Running openvisualizer in a separated process")
-    t_openvisualizer = threading.Thread(target=run_command_print, args=(cmd, config['code_sw_src'], ))
+    if ('subexp_duration' in config):
+        t_openvisualizer = threading.Thread(target=run_command_print, args=(cmd, config['subexp_duration'] * 60, config['code_sw_src'], ))
+    else:
+        t_openvisualizer = threading.Thread(target=run_command_print, args=(cmd, 0, config['code_sw_src'], ))
     t_openvisualizer.start()
     print("Thread {0} started".format(t_openvisualizer))
 
@@ -312,7 +333,11 @@ def openwebserver_start(config):
     cmd="python /usr/local/bin/openv-client view web --debug ERROR"
     print(cmd)
     print("Running openweb server in a separated thread")
-    t_openwebserver = threading.Thread(target=run_command_print, args=(cmd, config['code_sw_src'], ))
+    if ('subexp_duration' in config):
+        t_openwebserver = threading.Thread(target=run_command_print, args=(cmd, config['subexp_duration'] * 60, config['code_sw_src'],))
+    else:
+          t_openwebserver = threading.Thread(target=run_command_print, args=(cmd, 0, config['code_sw_src'],))
+
     t_openwebserver.start()
     print("Thread {0} started, pid {1}".format(t_openwebserver, os.getpid()))
 

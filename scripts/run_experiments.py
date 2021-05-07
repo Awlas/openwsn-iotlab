@@ -1,39 +1,47 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
 
 
-import string
-import random
+# systems tools
 import os
-from subprocess import Popen, PIPE, STDOUT, TimeoutExpired
-import threading
-import psutil
+import shutil
 import sys
-import json, sys
+import random
 import time
 import sys
 import signal
-import tempfile
-import shutil
-import jsonpickle
 
 
+# multiprocess
+import threading
+import psutil
+
+#format
+import string
+import json
 
 #custom libraries
-import experiments
+import iotlabowsn
+
+
 
 #configuration for the experimenal setup (what stays unchanged)
 def configuration_set():
     config = {}
 
+    #paths
     config['path_initial'] = os.getcwd()
     print ("Inital path: {0}".format(config['path_initial']))
     
+    config['path_results_root'] = "/home/theoleyre/owsn-results/"
+    config['path_results_root_crash'] = config['path_results_root'] + "/crash"
+    os.makedirs(config['path_results_root_crash'], exist_ok=True)
+    
     # Metadata for experiments
     config['user']="theoleyr"
-    config['exp_duration']="30"
+    config['exp_duration']=180        # for the iot lab reservation (collection of runs), in minutes
+    config['subexp_duration']=1       # for one run (one set of parameters), in minutes
     config['exp_resume']=True
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
@@ -43,13 +51,20 @@ def configuration_set():
     config['archi']="m3"
     config['site']="strasbourg"
 
-    #code (git repositories)
-    config['code_sw_src']= config['path_initial'] + "/../openvisualizer/"
+    # openvisualizer directory
+    config['code_sw_src'] = config['path_initial'] + "/../openvisualizer/"
+    if (os.path.exists(config['code_sw_src']) == False):
+        print("{0} does not exist".format(config['code_sw_src']))
+        exit(-4)
     config['code_sw_gitversion']="e039a05"
+
+    # firmware part
     config['code_fw_src']= config['path_initial'] + "/../openwsn-fw/"
+    if (os.path.exists(config['code_fw_src']) == False):
+        print("{0} does not exist".format(config['code_fw_src']))
+        exit(-4)
     config['code_fw_gitversion']="515eafa7"
     config['code_fw_bin']=config['code_fw_src']+"build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
-    
     
     #Only in simulation mode!
     if (config['board'] == "python"):
@@ -70,14 +85,11 @@ def print_header(msg):
     print("---------------------------------------------\n\n")
 
 
-
-#signal protection
-def kill_all(sig, frame):
-    print(frame)
-
+#clean up
+def cleanup_subexp(error=False):
     print_header("Cleanup")
-  
-    if (sig == signal.SIGUSR1):
+
+    if (error == False):
         print("Everything was ok")
         file = open(config['path_results'] + "/_ok.txt", 'w')
         file.write("ok\n")
@@ -85,13 +97,24 @@ def kill_all(sig, frame):
     else:
         print("Something went wrong -> move the files {0} in {1}". format(config['path_results'], config['path_results_root']+"crash"))
         shutil.move(config['path_results'], config['path_results_root_crash'])
+        
+    del config['path_results']
+    
+        
+#signal protection
+def kill_all(sig, frame):
+  
+    #cleanup the directory result
+    if 'path_results' in config:
+        cleanup_subexp(sig == signal.SIGUSR1)
 
+    #kill everything
     process = psutil.Process(os.getpid())
     for proc in process.children(recursive=True):
         print("killing {0}".format(proc))
         proc.kill()
         print("..killed")
-    if (sig == signal.SIGINT):
+    if (sig == signal.SIGUSR1):
         sys.exit(0)
     else:
         sys.exit(3)
@@ -103,16 +126,9 @@ def kill_all(sig, frame):
 # ----- INIT
 
 print_header("Initialization")
-
-#protection against control+c (or called via a signal at the end)
-signal.signal(signal.SIGINT, kill_all)
-signal.signal(signal.SIGUSR1, kill_all)
-
-
-# initialiation
-experiments.root_verif()
+iotlabowsn.root_verif()
 config = configuration_set()
-experiments.openvisualizer_install(config)
+iotlabowsn.openvisualizer_install(config)
 
 
 
@@ -127,20 +143,19 @@ config['dagroots_list']=[ 43 ]
 #parameters for the code
 config['badmaxrssi'] = 100
 config['goodminrssi'] = 100
-
-
+config['lowestrankfirst'] = 1
 
 
 
 # ---- RESERVATION /RESUME EXPERIMENT ----
 print_header("Reservation (experiment)")
 if ( config['exp_resume'] == True):
-    exp_id = experiments.get_running_id(config);
+    exp_id = iotlabowsn.get_running_id(config);
 if exp_id is not None:
     print("Resume the experiment id {0}".format(exp_id))
 else:
-    exp_id = experiments.reserve(config)
-experiments.wait_running(exp_id)
+    exp_id = iotlabowsn.reserve(config)
+iotlabowsn.wait_running(exp_id)
 
 
 
@@ -151,19 +166,16 @@ experiments.wait_running(exp_id)
 anycast_list = [False , True]
 for anycast in anycast_list:
     
-    print_header("Anycast = " + str(anycast))
+    print_header("Anycast = {0}".format(anycast))
     
     #final results
-    config['path_results_root'] = "/home/theoleyre/owsn-results/"
-    config['path_results_root_crash'] = config['path_results_root'] + "/crash"
-    os.makedirs(config['path_results_root_crash'], exist_ok=True)
     it = os.listdir(config['path_results_root'])
     while (True):
         config['path_results'] = "owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         print("List of existing results: {0}".format(it))
         if (config['path_results'] not in it):
             break;
-        print("{0} laready exists, find another directory name.".format(config['path_results']))
+        print("{0} already exists, find another directory name.".format(config['path_results']))
     config['path_results'] = config['path_results_root'] + config['path_results']
     os.makedirs(config['path_results'])
     print("Results Path {0}".format(config['path_results']))
@@ -181,29 +193,26 @@ for anycast in anycast_list:
 
     #saves the config
     file = open(config['path_results']+"/params.txt", 'w')
-    str = jsonpickle.encode(config)
-    file.write(str)
-    file.close
+    json.dump(config, file)
+    file.close()
     
-
+    
+    
     # ---- COMPIL + FLASHING----
 
-
     print_header("Compilation")
-    experiments.compilation_firmware(config)
+    iotlabowsn.compilation_firmware(config)
 
     print_header("Flashing")
-    experiments.flashing_motes(exp_id, config)
-
+    iotlabowsn.flashing_motes(exp_id, config)
 
 
 
     # ---- OpenVisualizer ----
 
     print_header("Openvizualiser")
-
-    experiments.openvisualizer_create_conf_file(config)
-    t_openvisualizer = experiments.openvisualizer_start(config)
+    iotlabowsn.openvisualizer_create_conf_file(config)
+    t_openvisualizer = iotlabowsn.openvisualizer_start(config)
 
 
 
@@ -211,15 +220,16 @@ for anycast in anycast_list:
     # ---- Openweb server (optional, for debuging via a web interface) ----
 
     #print_header("Openweb server")
-    #t_openwebserver = experiments.openwebserver_start(config)
+    #t_openwebserver = iotlabowsn.openwebserver_start(config)
+
 
 
 
     # ---- Boots the motes ----
 
     print_header("Configure Motes")
-    experiments.mote_boot(exp_id)
-    experiments.dagroot_set(config)
+    iotlabowsn.mote_boot(exp_id)
+    iotlabowsn.dagroot_set(config)
 
 
 
@@ -232,25 +242,30 @@ for anycast in anycast_list:
     print("nb threads = {0}".format(threading.active_count()))
 
     #every second, let us verify that the openvizualizer thread is still alive
-    #TODO: transform minutes in seconds
     counter = 0
+
     while (t_openvisualizer.is_alive()):
-        print("thread {0} is alive, {1}<{2}".format(t_openvisualizer, counter, int(config['exp_duration'])))
+        print("thread {0} is alive, {1}<{2}".format(t_openvisualizer, counter, config['subexp_duration']))
         counter = counter + 1
-        if (counter >= int(config['exp_duration'])):
-            break;
-        time.sleep(1)
-        
+        time.sleep(60)
 
-    print("nb seconds runtime: {0}".format(counter))
 
+    print("nb minutes runtime: {0}".format(counter))
+    print("nb threads = {0}".format(threading.active_count()))
 
 
 
 
-#time.sleep(60 * int(config['exp_duration']))
-if (counter >= int(config['exp_duration'])):
-    os.kill(os.getpid(), signal.SIGUSR1)
-else:
-    os.kill(os.getpid(), signal.SIGINT)
+
+    #everything was ok -> cleanup
+    counter = counter + 1
+    cleanup_subexp(counter >= config['subexp_duration'])
+   
+    time.sleep(10)
+
+
+
+#if we are here, this means that we don't have any other running process
+print("End of the computation")
+
 
