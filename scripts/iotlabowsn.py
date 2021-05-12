@@ -3,11 +3,12 @@
 
 
 #files
-from subprocess import Popen, PIPE, STDOUT
+import subprocess
 
 # format
 import string
 import json
+import array
 
 # multiprocess
 import threading
@@ -26,25 +27,46 @@ import time
 #Run an extern command and returns the stdout
 def run_command(cmd, timeout=0, path=None):
     
-    process = Popen(cmd, preexec_fn=os.setsid, shell=True, stdout=PIPE, stderr=PIPE, close_fds=True, cwd=path)
+    process = subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, cwd=path, universal_newlines=True, bufsize=0)
     
     #after the timeout, kill all the children (Shell=True)
     if (timeout > 0):
-        try:
-            process.wait(timeout=timeout)
-        except:
-            print("run_command(), timeout expiration, pid {0}".format(process.pid))
+        time_start = time.time()
+        while (True):
+            try:
+                out, err = process.communicate(timeout=5)
+                print(out)
+                print(err)
+                print("-------")
+                   
+                #that's the end
+                if process.poll() is not None:
+                    print("The process has correctly terminated before the timeout")
+                    break;
                 
-            import psutil
-            process_me = psutil.Process(process.pid)
-            for proc in process_me.children(recursive=True):
-                print("killing {0}".format(proc))
-                proc.kill()
-                print("..killed")
-      
+            except subprocess.TimeoutExpired:
+                # timeout !
+                if (time.time() - time_start > timeout):
+                    print("run_command(), timeout expiration, pid {0}".format(process.pid))
+                        
+                    import psutil
+                    process_me = psutil.Process(process.pid)
+                    for proc in process_me.children(recursive=True):
+                        print("killing {0}".format(proc))
+                        proc.kill()
+                        print("..killed")
+                # the process is terminated
+                elif process.poll() is not None:
+                    print("The process has correctly terminated before the timeout")
+                    break;
+                
+                #still time to run
+                else:
+                    print("we still have time: {0}s < {1}s".format(time.time() - time_start, timeout))
     else:
         process.wait()
-        
+      
+    print("End of the shell command")
         
     #if (process.returncode != 0):
     #    print("Return code after run() {0}".format(process.returncode))
@@ -54,9 +76,10 @@ def run_command(cmd, timeout=0, path=None):
 #Run an extern command and prints the stdout
 def run_command_print(cmd, timeout=0, path=None):
     process = run_command(cmd, timeout, path)
-    
-    print("OUT= {0}".format(process.stdout.read()))
-    print("ERR= {0}".format(process.stderr.read()))
+
+    if (timeout == 0):
+        print("STDOUT= {0}".format(process.stdout.read()))
+        print("STDERR= {0}".format(process.stderr.read()))
 
     return(process)
 
@@ -149,7 +172,7 @@ def get_running_id(config):
 
 
 # start a novel experiment with the right config
-def reserve(config):
+def exp_start(config):
     exp_id_running=0
     cmd= "iotlab-experiment submit " + " -n "+config['exp_name']
     cmd=cmd + " -d "+ str(config['exp_duration'])
@@ -171,17 +194,35 @@ def reserve(config):
 
 
 # waits that the id is running
-def wait_running(exp_id):
+def exp_wait_running(exp_id):
     cmd="iotlab-experiment wait -i "+ str(exp_id)
     print(cmd)
     process = run_command(cmd=cmd)
+    print(process.stdout.read())
+
+# waits that the id is running
+def exp_stop(exp_id):
+    cmd="iotlab-experiment stop -i "+ str(exp_id)
+    print(cmd)
+    process = run_command(cmd=cmd)
+    print(process.stdout.read())
+
+
+def get_nodes_list(site, archi, state):
+    nodes_list = []
+    
+    cmd="iotlab-status --nodes --site "+site+" --archi "+archi+" --state "+state
+    print(cmd)
+    process = run_command(cmd=cmd)
     output = process.stdout.read()
-    print(output)
-
-
-
-
-
+    infos=json.loads(output)
+    l_net = infos["items"][1]["network_address"]
+    for item in infos["items"]:
+        node = item["network_address"].split('.')[0].split('-')[1]
+        nodes_list.append(node)
+    nodes_list.sort(key=int)
+    return(nodes_list)
+    
 #Flashing the devices with a compiled firmware
 def flashing_motes(exp_id, config):
     cmd="iotlab-node --flash " + config['code_fw_bin'] + " -i " + str(exp_id)
@@ -210,8 +251,8 @@ def openvisualizer_install(config):
     print("Install the current version of Openvisualizer")
     cmd="pip2 install -e ."
     process = run_command(cmd=cmd, path=config['code_sw_src'])
-    output = process.stderr.read()
-    print(output)
+    for line in process.stderr:
+        print(line)
     
     
     if (process.returncode != 0):
@@ -318,8 +359,13 @@ def openvisualizer_start(config):
     while True:
         process = run_command(cmd=cmd)
         output = process.stdout.read()
-        if "Connection refused" not in output:
+        #print(output)
+        #print(output.find("Connection refused"))
+        
+        #connected -> openvisualizer is running
+        if output.find("Connection refused") == -1:
             break
+            
         #wait 2 seconds before trying to connect to the server
         time.sleep(2)
     print("Openvisualizer seems correctly running")
