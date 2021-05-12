@@ -66,7 +66,6 @@ def run_command(cmd, timeout=0, path=None):
     else:
         process.wait()
       
-    print("End of the shell command")
         
     #if (process.returncode != 0):
     #    print("Return code after run() {0}".format(process.returncode))
