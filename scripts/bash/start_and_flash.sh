@@ -11,16 +11,16 @@ echo "directory for temporary files: $temp_dir"
 
 #compilation & firmwares
 SW_SRC="../../openvisualizer"
-SW_GIT_VERSION="d3fa9b6"
+#SW_GIT_VERSION="d3fa9b6"
 FW_SRC="../../openwsn-fw"
-FW_GIT_VERSION="c96e335a"
+#FW_GIT_VERSION="c96e335a"
 FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
 FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
 
 
 #----- git versions verification
 #git rev-parse --short HEAD
-if [ -n $SW_GIT_VERSION ]
+if [ -n "$SW_GIT_VERSION" ]
 then
     cd $SW_SRC
     if [ "`git rev-parse --short HEAD`" != "$SW_GIT_VERSION" ]
