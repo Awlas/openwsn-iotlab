@@ -11,9 +11,9 @@ echo "directory for temporary files: $temp_dir"
 
 #compilation & firmwares
 SW_SRC="../../openvisualizer"
-SW_GIT_VERSION="525b684"
+SW_GIT_VERSION="d3fa9b6"
 FW_SRC="../../openwsn-fw"
-FW_GIT_VERSION="515eafa7"
+FW_GIT_VERSION="c96e335a"
 FW_BIN="build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
 FW_BIN_IOTLAB="A8/03oos_openwsn_prog"
 
@@ -71,12 +71,12 @@ DAGROOT="204"
 #NODES_LIST="357+347+337"
 #SITE=strasbourg
 #------ Simulation
-#BOARD="python"
-#TOOLCHAIN="gcc"
-#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
+BOARD="python"
+TOOLCHAIN="gcc"
+TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
 #fast discovery (does it work?)
 #OPTION="stackcfg=channel:18"
-COMPIL_OPTIONS="boardopt=printf modules=coap,udp apps=cjoin,cexample scheduleopt=anycast,lowestrankfirst debugopt=CCA,schedule stackcfg=badmaxrssi:100,goodminrssi:100"
+COMPIL_OPTIONS="boardopt=printf modules=coap,udp apps=cjoin,cexample" # scheduleopt=anycast,lowestrankfirst debugopt=CCA,schedule stackcfg=badmaxrssi:100,goodminrssi:100"
 
 
 echo
@@ -279,7 +279,7 @@ cd $REP_CURRENT
 cd $SW_SRC
 
 echo "install the current version of Openvisualizer"
-CMD="pip install -e ."
+CMD="pip2 install -e ."
 echo $CMD
 $CMD > /dev/null
 
