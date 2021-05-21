@@ -130,105 +130,86 @@ def kill_all(sig, frame):
  
 
 
+def nodes_selection(config, nbnodes):
+    #construct the list of motes
+    print_header("Nodes Selection")
+    testbed_nodealive_list = iotlabowsn.get_nodes_list(config["site"], config["archi"], "Alive")
+    maxspace_between_ids=15
+    nbtest=0
+    config['nodes_list'] = []
 
-
-# ----- INIT
-
-
-print_header("Initialization")
-iotlabowsn.root_verif()
-config = configuration_set()
-config['seed'] = 2
-random.seed(config['seed'])
-
-
-#openvisualizer
-iotlabowsn.openvisualizer_install(config)
-
-
-#Parameters for this set of experiments
-config['badmaxrssi'] = 100
-config['goodminrssi'] = 100
-config['lowestrankfirst'] = 1
-
-
-#construct the list of motes
-print_header("Nodes Selection")
-testbed_nodealive_list = iotlabowsn.get_nodes_list(config["site"], config["archi"], "Alive")
-maxspace_between_ids=15
-nbnodes=10
-nbtest=0
-config['nodes_list'] = []
-
-#insert iteratively the motes
-while(len(config['nodes_list']) < nbnodes):
-    connected = False
-    while(connected is False):
-    
-        #pick a random id in the list (not already present in the selection
-        while (True):
-            new = random.randint(0, len(testbed_nodealive_list)-1)
-            new = int(testbed_nodealive_list[new])
-            
-            #this id is a priori ok
-            if ((new >= config['minid']) and (new <= config['maxid']) and (new not in config['nodes_list'])):
-                #print(new)
-                break
-                
-        #print("test {0} in {1} {2}".format(new, config['nodes_list'], len(config['nodes_list'])))
+    #insert iteratively the motes
+    while(len(config['nodes_list']) < nbnodes):
+        connected = False
+        while(connected is False):
         
-        #the list is not null
-        if (len(config["nodes_list"]) > 0):
-            
-            #an id in the list is close to this novel one
-            for node in config['nodes_list']:
-                if (abs(node - new) <= maxspace_between_ids):
-                    connected = True
+            #pick a random id in the list (not already present in the selection
+            while (True):
+                new = random.randint(0, len(testbed_nodealive_list)-1)
+                new = int(testbed_nodealive_list[new])
+                
+                #this id is a priori ok
+                if ((new >= config['minid']) and (new <= config['maxid']) and (new not in config['nodes_list'])):
+                    #print(new)
                     break
-                
-        # the first id is ok, whatever it is
-        else:
-            connected = True
-        
-        if (connected):
-            config["nodes_list"].append(new)
+                    
+            #print("test {0} in {1} {2}".format(new, config['nodes_list'], len(config['nodes_list'])))
             
-        
-        #too many fails -> restart from scratch
-        #print("nbtest {0}".format(nbtest))
-        nbtest = nbtest + 1
-        if (nbtest > 15 * nbnodes):
-            print("too many fails -> flush the list to start from scratch")
-            config['nodes_list'].clear()
-            nbtest=0
+            #the list is not null
+            if (len(config["nodes_list"]) > 0):
+                
+                #an id in the list is close to this novel one
+                for node in config['nodes_list']:
+                    if (abs(node - new) <= maxspace_between_ids):
+                        connected = True
+                        break
+                    
+            # the first id is ok, whatever it is
+            else:
+                connected = True
+            
+            if (connected):
+                config["nodes_list"].append(new)
+                
+            
+            #too many fails -> restart from scratch
+            #print("nbtest {0}".format(nbtest))
+            nbtest = nbtest + 1
+            if (nbtest > 15 * nbnodes):
+                print("too many fails -> flush the list to start from scratch")
+                config['nodes_list'].clear()
+                nbtest=0
 
 
-#cleanup + dagroot selection (first mote in the list)
-config['nodes_list'].sort(key=int)
-config['dagroots_list'] = [config['nodes_list'][0], ]
-config['nodes_list'].remove(config['dagroots_list'][0])
-print("Nodes list: {0}".format(config["nodes_list"]))
-print("Dagroot: {0}".format(config["dagroots_list"]))
+    #cleanup + dagroot selection (first mote in the list)
+    config['nodes_list'].sort(key=int)
+    config['dagroots_list'] = [config['nodes_list'][0], ]
+    config['nodes_list'].remove(config['dagroots_list'][0])
+    print("Nodes list: {0}".format(config["nodes_list"]))
+    print("Dagroot: {0}".format(config["dagroots_list"]))
 
 
+    return config
 
 
 # ---- RESERVATION /RESUME EXPERIMENT ----
-print_header("Reservation (experiment)")
-if ( config['exp_resume'] == True):
-    exp_id = iotlabowsn.get_running_id(config);
-if exp_id is not None:
-    print("Resume the experiment id {0}".format(exp_id))
-else:
-    exp_id = iotlabowsn.exp_start(config)
-print("Wait the experiment is in running mode")
-iotlabowsn.exp_wait_running(exp_id)
 
-
-# test the two different solutions
-for anycast in [False] : # , True]:
+def experiment_reservation(config):
+    print_header("Reservation (experiment)")
+    if ( config['exp_resume'] == True):
+        exp_id = iotlabowsn.get_running_id(config);
+    if exp_id is not None:
+        print("Resume the experiment id {0}".format(exp_id))
+    else:
+        exp_id = iotlabowsn.exp_start(config)
     
-    print_header("Anycast = {0}".format(anycast))
+    print("Wait the experiment is in running mode")
+    iotlabowsn.exp_wait_running(exp_id)
+    
+    return exp_id
+
+
+def experiment_execute(config):
     
     #final results
     dirs_res = os.listdir(config['path_results_root'])
@@ -247,18 +228,14 @@ for anycast in [False] : # , True]:
     # ---- CONFIG----
  
     #openvisualizer configuration
-    config['conf_file']= config['path_results'] + "/logging.conf"
-    config['conf_file_start']= config['path_initial'] + "/loggers/logging_start.conf"
-    config['conf_file_end']= config['path_initial'] + "/loggers/logging_end.conf"
-
-     #param
-    config['anycast'] = anycast
+    config['conf_file'] = config['path_results'] + "/logging.conf"
+    config['conf_file_start'] = config['path_initial'] + "/loggers/logging_start.conf"
+    config['conf_file_end'] = config['path_initial'] + "/loggers/logging_end.conf"
 
     #saves the config
     file = open(config['path_results']+"/params.txt", 'w')
     json.dump(config, file)
     file.close()
-    
     
     
     # ---- COMPIL + FLASHING----
@@ -270,30 +247,25 @@ for anycast in [False] : # , True]:
     iotlabowsn.flashing_motes(exp_id, config)
 
 
-
     # ---- OpenVisualizer ----
 
     time_start = time.time()
     print_header("Openvizualiser")
     iotlabowsn.openvisualizer_create_conf_file(config)
     t_openvisualizer = iotlabowsn.openvisualizer_start(config)
-
-
-
+    
 
     # ---- Openweb server (optional, for debuging via a web interface) ----
 
     print_header("Openweb server")
     t_openwebserver = iotlabowsn.openwebserver_start(config)
-
-
+    
 
     # ---- Boots the motes ----
 
     print_header("Configure Motes")
     iotlabowsn.mote_boot(exp_id)
     iotlabowsn.dagroot_set(config)
-
 
 
     # ---- Exp running ----
@@ -306,7 +278,7 @@ for anycast in [False] : # , True]:
 
     #every second, let us verify that the openvizualizer thread is still alive
     counter = 0
-    while (t_openvisualizer.is_alive()):
+    while (t_openvisualizer is not None and t_openvisualizer.is_alive()):
         counter = counter + 1
         if (counter >= 60):
             print("thread {0} is alive, {1}s < {2}min".format(t_openvisualizer, time.time() - time_start, config['subexp_duration']))
@@ -330,15 +302,59 @@ for anycast in [False] : # , True]:
             print("killing {0}".format(proc))
             proc.kill()
             print("..killed")
+
+
+
+
+# ----- INIT
+
+
+print_header("Initialization")
+iotlabowsn.root_verif()
+config = configuration_set()
+config['seed'] = 2
+random.seed(config['seed'])
+
+
+#openvisualizer
+iotlabowsn.openvisualizer_install(config)
+
+#Parameters for this set of experiments
+config['badmaxrssi'] = 100
+config['goodminrssi'] = 100
+config['lowestrankfirst'] = 1
+
+
+#replay the same values 5 times
+for counter in range(5):
     
-    
-iotlabowsn.exp_stop(exp_id)
+    #selects the nodes
+    for nbnodes in [10, ]:
+        
+        config = nodes_selection(config, nbnodes)
+
+        #reservation of the experiments
+        exp_id = experiment_reservation(config)
+
+        # test the two different solutions
+        for anycast in [False , True]:
+            time_start = time.time()
+            
+            #param
+            config['anycast'] = anycast
+            print_header("anycast={0}, nbnodes={1}".format(anycast, nbnodes))
+
+            experiment_execute(config)
+            
+            print("nb seconds runtime for this experiment: {0}".format(time.time() - time_start))
+
+        #stop the experiment
+        iotlabowsn.exp_stop(exp_id)
 
 
 
-#if we are here, this means that we don't have any other running process
+#if we are here, this means that the collection of experiments is finished
 print("End of the computation")
-print("nb seconds runtime: {0}".format(time.time() - time_start))
 print("nb threads = {0}".format(threading.active_count()))
 
 sys.exit(0)

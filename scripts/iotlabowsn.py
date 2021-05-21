@@ -75,16 +75,15 @@ def run_command_printrealtime(cmd, path=None, timeout=None):
         #process terminated
         except TypeError:
             break;
-            
+        
+        except:
+            print("No running experiment, error {0}".format(sys.exc_info()[0]))
+
         else:
             print("{0}".format(line.rstrip()))
-            print("{0}: {1}".format(source, line.rstrip()))
+            #print("{0}: {1}".format(source, line.rstrip()))
 
-    
-  #  for source, line in iter(q.get, None):
-  #      print("{0}".format(line.rstrip()))
-  #      #print("{0}: {1}".format(source, line.rstrip()))
-
+  
         #timeout
         if (timeout is not None) and (time.time() - start_time > timeout):
             
@@ -101,8 +100,8 @@ def run_command_printrealtime(cmd, path=None, timeout=None):
             
             print("command has timeouted")
             break
-        elif (timeout is not None):
-            print("{0}  < {1}".format(time.time() - start_time, timeout))
+        #elif (timeout is not None):
+        #    print("{0}  < {1}".format(time.time() - start_time, timeout))
             
                 
     out = "not handled in printrealtime"
@@ -382,12 +381,16 @@ def openvisualizer_start(config):
     cmd="openv-client motes"
     while True:
         process,output,err = run_command(cmd=cmd)
-        #print(output)
+        print("client: {0}".format(output))
         #print(output.find("Connection refused"))
         
         #connected -> openvisualizer is running
         if output.find("Connection refused") == -1:
             break
+        
+        #crash
+        if t_openvisualizer.is_alive() is False:
+            return None
             
         #wait 2 seconds before trying to connect to the server
         time.sleep(2)
