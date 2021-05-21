@@ -12,6 +12,7 @@ import array
 
 # multiprocess
 import threading
+import psutil
 
 #systems
 import os
@@ -19,69 +20,107 @@ import sys
 import sys
 import time
 
+from queue import Queue, Empty
 
 
+# ----- Transfer stdout and stderr in a queue ---
 
-# -----  Run external commands ---
+def reader(proc, pipe, queue):
+    print("{0}/{1}: process started".format(proc, pipe))
+
+
+    for line in iter(pipe.readline, b''):
+        queue.put((pipe, line))
+        
+        #print(pipe)
+        if proc.poll() is not None:
+            print("{0}/{1}: process terminated".format(proc, pipe))
+            queue.put(None)
+            return
+    #    except:
+    #        print("error reader() {0}".format(sys.exc_info()[0]))
+    #        print(proc.poll())
+ 
+    print("end of reader()")
+
+        
 
 #Run an extern command and returns the stdout
-def run_command(cmd, timeout=0, path=None):
+def run_command_printrealtime(cmd, path=None, timeout=None):
     
-    process = subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, cwd=path, universal_newlines=True, bufsize=0)
+    print("CMD: {0}".format(cmd))
+    process = subprocess.Popen(cmd, shell=True, stdin=open(os.devnull), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=path, close_fds=True, universal_newlines=True, bufsize=1)
+
+    #queue for stdout + stderr
+    q = Queue()
     
-    #after the timeout, kill all the children (Shell=True)
-    if (timeout > 0):
-        time_start = time.time()
-        while (True):
-            try:
-                out, err = process.communicate(timeout=5)
-                print(out)
-                print(err)
-                print("-------")
-                   
-                #that's the end
-                if process.poll() is not None:
-                    print("The process has correctly terminated before the timeout")
-                    break;
-                
-            except subprocess.TimeoutExpired:
-                # timeout !
-                if (time.time() - time_start > timeout):
-                    print("run_command(), timeout expiration, pid {0}".format(process.pid))
-                        
-                    import psutil
-                    process_me = psutil.Process(process.pid)
-                    for proc in process_me.children(recursive=True):
-                        print("killing {0}".format(proc))
-                        proc.kill()
-                        print("..killed")
-                # the process is terminated
-                elif process.poll() is not None:
-                    print("The process has correctly terminated before the timeout")
-                    break;
-                
-                #still time to run
-                else:
-                    print("we still have time: {0}s < {1}s".format(time.time() - time_start, timeout))
-    else:
-        process.wait()
-      
+    t_stdout = threading.Thread(target=reader, args=(process, process.stdout, q))
+    t_stdout.daemon = True # thread dies with the program
+    t_stdout.start()
+    
+    t_stderr = threading.Thread(target=reader, args=(process, process.stderr, q))
+    t_stderr.daemon = True # thread dies with the program
+    t_stderr.start()
+
+    start_time = time.time()
+    
+  # for _ in range(2):
+    while True:
+        try:
+            source, line = q.get_nowait() # or q.get(timeout=.1)
         
-    #if (process.returncode != 0):
-    #    print("Return code after run() {0}".format(process.returncode))
-    return(process)
+        except Empty:
+            time.sleep(0.1)
+            
+        #process terminated
+        except TypeError:
+            break;
+            
+        else:
+            print("{0}".format(line.rstrip()))
+            print("{0}: {1}".format(source, line.rstrip()))
+
     
+  #  for source, line in iter(q.get, None):
+  #      print("{0}".format(line.rstrip()))
+  #      #print("{0}: {1}".format(source, line.rstrip()))
 
-#Run an extern command and prints the stdout
-def run_command_print(cmd, timeout=0, path=None):
-    process = run_command(cmd, timeout, path)
+        #timeout
+        if (timeout is not None) and (time.time() - start_time > timeout):
+            
+            #kill shell process + its children
+            if process.poll() is None:
+                print("to kill")
+            
+                process_shell = psutil.Process(process.pid)
+                for proc in process_shell.children(recursive=True):
+                    print("killing {0}".format(proc))
+                    proc.kill()
+                    print("..killed")
+                process_shell.kill()
+            
+            print("command has timeouted")
+            break
+        elif (timeout is not None):
+            print("{0}  < {1}".format(time.time() - start_time, timeout))
+            
+                
+    out = "not handled in printrealtime"
+    err = "not handled in printrealtime"
+    return(process, out, err)
 
-    if (timeout == 0):
-        print("STDOUT= {0}".format(process.stdout.read()))
-        print("STDERR= {0}".format(process.stderr.read()))
 
-    return(process)
 
+#Run an extern command and returns the stdout
+def run_command(cmd, path=None, timeout=None):
+
+    process = subprocess.run(cmd, shell=True, cwd=path, close_fds=True, timeout=timeout, capture_output=True, text=True)
+
+    out = process.stdout
+    err = process.stderr
+    
+    return(process, out, err)
+    
 
 #sudo verification
 def root_verif():
@@ -105,24 +144,22 @@ def root_verif():
 #compiles a firmware
 def compilation_firmware(config):
     cmd="scons board=" + config['board'] + " toolchain=" + config['toolchain'] + " "
-    cmd=cmd +" boardopt=printf modules=coap,udp apps=cjoin,cexample debugopt=CCA,schedule "
+    cmd=cmd +" boardopt=printf modules=coap,udp apps=cjoin,cexample debugopt=CCA,schedule,rank,sixtop "
     if (config['anycast'] and config['lowestrankfirst']):
         cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
     elif (config['anycast']):
         cmd=cmd + " scheduleopt=anycast "
     cmd=cmd + " stackcfg=badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
     cmd=cmd + " oos_openwsn "
-    
-    print(cmd)
-    run_command_print(cmd=cmd, path=config['code_fw_src'])
+
+    run_command_printrealtime(cmd=cmd, path=config['code_fw_src'])
 
 
 
 # get the iotlab id for a runnning experiment (to resume it)
 def get_running_id(config):
     cmd = 'iotlab-experiment get -e'
-    process = run_command(cmd=cmd)
-    output = process.stdout.read()
+    process,output,err = run_command(cmd=cmd)
     infos = json.loads(output)
 
     # pick the last (most recent) experiment
@@ -131,8 +168,7 @@ def get_running_id(config):
         
         #Site identification (if the experiment is already running)
         cmd="iotlab-experiment get -i " + str(exp_id_running) + " -n"
-        process = run_command(cmd=cmd)
-        output = process.stdout.read()
+        process,output,err = run_command(cmd=cmd)
     except KeyError:
         print("No running experiment")
         return
@@ -183,9 +219,7 @@ def exp_start(config):
     for node in config['nodes_list'] :
         cmd= cmd + "+" + str(node)
     
-    print(cmd)
-    process = run_command(cmd=cmd)
-    output = process.stdout.read()
+    process,output,err = run_command(cmd=cmd)
     print(output)
     infos=json.loads(output)
     exp_id_running=infos["id"]
@@ -195,27 +229,25 @@ def exp_start(config):
 # waits that the id is running
 def exp_wait_running(exp_id):
     cmd="iotlab-experiment wait -i "+ str(exp_id)
-    print(cmd)
-    process = run_command(cmd=cmd)
-    print(process.stdout.read())
+    process,output,err = run_command(cmd=cmd)
+    print(output)
 
 # waits that the id is running
 def exp_stop(exp_id):
     cmd="iotlab-experiment stop -i "+ str(exp_id)
-    print(cmd)
-    process = run_command(cmd=cmd)
-    print(process.stdout.read())
+    process,output,err = run_command(cmd=cmd)
+    print(output)
 
 
 def get_nodes_list(site, archi, state):
     nodes_list = []
     
     cmd="iotlab-status --nodes --site "+site+" --archi "+archi+" --state "+state
-    print(cmd)
-    process = run_command(cmd=cmd)
-    output = process.stdout.read()
+    process,output,err = run_command(cmd=cmd)
+    #print(out)
+    print(err)
     infos=json.loads(output)
-    l_net = infos["items"][1]["network_address"]
+    l_net = infos["items"][0]["network_address"]
     for item in infos["items"]:
         node = item["network_address"].split('.')[0].split('-')[1]
         nodes_list.append(node)
@@ -225,9 +257,7 @@ def get_nodes_list(site, archi, state):
 #Flashing the devices with a compiled firmware
 def flashing_motes(exp_id, config):
     cmd="iotlab-node --flash " + config['code_fw_bin'] + " -i " + str(exp_id)
-    print(cmd)
-    process = run_command(cmd=cmd)
-    output = process.stdout.read()
+    process,output,err = run_command(cmd=cmd)
     infos=json.loads(output)
     ok=True
     if "0" in infos:
@@ -249,10 +279,8 @@ def flashing_motes(exp_id, config):
 def openvisualizer_install(config):
     print("Install the current version of Openvisualizer")
     cmd="pip2 install -e ."
-    process = run_command(cmd=cmd, path=config['code_sw_src'])
-    for line in process.stderr:
-        print(line)
-    
+    process,output,err = run_command(cmd=cmd, path=config['code_sw_src'])
+    print(err)
     
     if (process.returncode != 0):
         print("Installation of openvisualizer has failed")
@@ -325,14 +353,13 @@ def openvisualizer_start(config):
     openvisualizer_options="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw"
     openvisualizer_options=openvisualizer_options+ " --lconf " + config['conf_file']
     if (config['board'] == "iot-lab_M3" ):
-        cmd="python /usr/local/bin/openv-server " + openvisualizer_options + " --iotlab-motes "
+        cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --iotlab-motes "
         for i in range(len(config['dagroots_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['dagroots_list'][i]) + "." + config['site'] + ".iot-lab.info "
         for i in range(len(config['nodes_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['nodes_list'][i]) + "." + config['site'] + ".iot-lab.info "
-        print(cmd)
     elif (config['board'] == "python" ):
-        cmd="python /usr/local/bin/openv-server " + openvisualizer_options + " --sim "+ config['nb_nodes'] + " " + config['topology']
+        cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --sim "+ config['nb_nodes'] + " " + config['topology']
 
     # stops the previous process
     try:
@@ -345,10 +372,8 @@ def openvisualizer_start(config):
         
     #Running the OV application
     print("Running openvisualizer in a separated process")
-    if ('subexp_duration' in config):
-        t_openvisualizer = threading.Thread(target=run_command_print, args=(cmd, config['subexp_duration'] * 60, config['code_sw_src'], ))
-    else:
-        t_openvisualizer = threading.Thread(target=run_command_print, args=(cmd, 0, config['code_sw_src'], ))
+    t_openvisualizer = threading.Thread(target=run_command_printrealtime, args=(cmd,  config['code_sw_src'], config['subexp_duration'] * 60,))  #with real time print stdout/stderr
+    t_openvisualizer.daemon = True
     t_openvisualizer.start()
     print("Thread {0} started".format(t_openvisualizer))
 
@@ -356,8 +381,7 @@ def openvisualizer_start(config):
     #wait that openvizualizer is properly initiated
     cmd="openv-client motes"
     while True:
-        process = run_command(cmd=cmd)
-        output = process.stdout.read()
+        process,output,err = run_command(cmd=cmd)
         #print(output)
         #print(output.find("Connection refused"))
         
@@ -375,14 +399,11 @@ def openvisualizer_start(config):
 #start the web client part
 def openwebserver_start(config):
 
-    cmd="python /usr/local/bin/openv-client view web --debug ERROR"
-    print(cmd)
+    cmd="python2 /usr/local/bin/openv-client view web --debug ERROR"
     print("Running openweb server in a separated thread")
-    if ('subexp_duration' in config):
-        t_openwebserver = threading.Thread(target=run_command_print, args=(cmd, config['subexp_duration'] * 60, config['code_sw_src'],))
-    else:
-          t_openwebserver = threading.Thread(target=run_command_print, args=(cmd, 0, config['code_sw_src'],))
+    t_openwebserver = threading.Thread(target=run_command, args=(cmd, config['code_sw_src'], ))    #no real time print stdout/stderr
 
+    t_openwebserver.daemon = True
     t_openwebserver.start()
     print("Thread {0} started, pid {1}".format(t_openwebserver, os.getpid()))
 
@@ -392,8 +413,7 @@ def openwebserver_start(config):
 #reboot all the motes (if some have been already selected dagroot for an unkwnon reason)
 def mote_boot(exp_id):
     cmd="iotlab-node --reset -i "+ str(exp_id)
-    print(cmd)
-    process = run_command_print(cmd=cmd)
+    run_command_printrealtime(cmd=cmd)
 
 
 
@@ -402,8 +422,7 @@ def mote_boot(exp_id):
 def dagroot_set(config):
     for node in config['dagroots_list']:
         cmd="openv-client root m3-" + str(node) +  "." + config['site'] + ".iot-lab.info"
-        print(cmd)
-        process = run_command_print(cmd=cmd)
+        process = run_command_printrealtime(cmd=cmd)
 
 
 

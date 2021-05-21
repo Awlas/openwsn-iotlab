@@ -33,7 +33,7 @@ def configuration_set():
     config['path_initial'] = os.getcwd()
     print ("Inital path: {0}".format(config['path_initial']))
     
-    config['path_results_root'] = "/home/theoleyre/owsn-results/"
+    config['path_results_root'] = "/home/theoleyre/openwsn/results/"
     config['path_results_root_crash'] = config['path_results_root'] + "/crash"
     os.makedirs(config['path_results_root_crash'], exist_ok=True)
     
@@ -172,6 +172,7 @@ while(len(config['nodes_list']) < nbnodes):
             
             #this id is a priori ok
             if ((new >= config['minid']) and (new <= config['maxid']) and (new not in config['nodes_list'])):
+                #print(new)
                 break
                 
         #print("test {0} in {1} {2}".format(new, config['nodes_list'], len(config['nodes_list'])))
@@ -220,11 +221,12 @@ if exp_id is not None:
     print("Resume the experiment id {0}".format(exp_id))
 else:
     exp_id = iotlabowsn.exp_start(config)
+print("Wait the experiment is in running mode")
 iotlabowsn.exp_wait_running(exp_id)
 
 
 # test the two different solutions
-for anycast in [False , True]:
+for anycast in [False] : # , True]:
     
     print_header("Anycast = {0}".format(anycast))
     
@@ -281,8 +283,8 @@ for anycast in [False , True]:
 
     # ---- Openweb server (optional, for debuging via a web interface) ----
 
-    #print_header("Openweb server")
-    #t_openwebserver = iotlabowsn.openwebserver_start(config)
+    print_header("Openweb server")
+    t_openwebserver = iotlabowsn.openwebserver_start(config)
 
 
 
@@ -304,24 +306,31 @@ for anycast in [False , True]:
 
     #every second, let us verify that the openvizualizer thread is still alive
     counter = 0
-
     while (t_openvisualizer.is_alive()):
-        print("thread {0} is alive, {1}<{2}".format(t_openvisualizer, counter, config['subexp_duration']))
-        time.sleep(5)
-
-
-    print("nb seconds runtime: {0}".format(time.time() - time_start))
-    print("nb threads = {0}".format(threading.active_count()))
-
-
-
-
+        counter = counter + 1
+        if (counter >= 60):
+            print("thread {0} is alive, {1}s < {2}min".format(t_openvisualizer, time.time() - time_start, config['subexp_duration']))
+            counter = 0
+        time.sleep(1)
 
     #everything was ok -> cleanup
     print("{0} >= ? {1} -> {2}".format(time.time() - time_start+2 , 60*config['subexp_duration'], time.time() - time_start +2 >= 60 * config['subexp_duration'] is not True))
     cleanup_subexp(time.time() - time_start + 2 < 60 * config['subexp_duration'])
+
+
+    print("nb seconds runtime: {0}".format(time.time() - time_start))
+    print("nb threads = {0}".format(threading.active_count()))
    
-    time.sleep(10)
+   
+    #kill all my children (including openweb server)
+    if t_openwebserver is not None and t_openwebserver.is_alive():
+        print("Cleanning up children process".format(t_openwebserver))
+        process = psutil.Process(os.getpid())
+        for proc in process.children(recursive=True):
+            print("killing {0}".format(proc))
+            proc.kill()
+            print("..killed")
+    
     
 iotlabowsn.exp_stop(exp_id)
 
@@ -329,5 +338,8 @@ iotlabowsn.exp_stop(exp_id)
 
 #if we are here, this means that we don't have any other running process
 print("End of the computation")
+print("nb seconds runtime: {0}".format(time.time() - time_start))
+print("nb threads = {0}".format(threading.active_count()))
 
+sys.exit(0)
 

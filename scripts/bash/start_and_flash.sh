@@ -71,13 +71,12 @@ DAGROOT="204"
 #NODES_LIST="357+347+337"
 #SITE=strasbourg
 #------ Simulation
-BOARD="python"
-TOOLCHAIN="gcc"
-TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
+#BOARD="python"
+#TOOLCHAIN="gcc"
+#TOPOLOGY="--load-topology $REP_CURRENT/topologies/topology-3nodes.json"
 #fast discovery (does it work?)
 #OPTION="stackcfg=channel:18"
-COMPIL_OPTIONS="boardopt=printf modules=coap,udp apps=cjoin,cexample" # scheduleopt=anycast,lowestrankfirst debugopt=CCA,schedule stackcfg=badmaxrssi:100,goodminrssi:100"
-
+COMPIL_OPTIONS="boardopt=printf modules=coap,udp apps=cjoin,cexample scheduleopt=anycast,lowestrankfirst debugopt=CCA,schedule stackcfg=badmaxrssi:100,goodminrssi:100"  # be careful for simulations -> rssi values are incorrect
 
 echo
 echo
