@@ -40,7 +40,7 @@ def configuration_set():
     # Metadata for experiments
     config['user']="theoleyr"
     config['exp_duration']=180        # for the iot lab reservation (collection of runs), in minutes
-    config['subexp_duration']=1       # for one run (one set of parameters), in minutes
+    config['subexp_duration']=1      # for one run (one set of parameters), in minutes
     config['exp_resume']=True
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 

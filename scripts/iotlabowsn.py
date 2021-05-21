@@ -381,23 +381,23 @@ def openvisualizer_start(config):
     cmd="openv-client motes"
     while True:
         process,output,err = run_command(cmd=cmd)
-        print("client: {0}".format(output))
+        print("client: \n{0}".format(output))
         #print(output.find("Connection refused"))
         
         #connected -> openvisualizer is running
         if output.find("Connection refused") == -1:
-            break
-        
+            print("Openvisualizer seems correctly running")
+            return(t_openvisualizer)
+
         #crash
         if t_openvisualizer.is_alive() is False:
+            print("Openvisualizer seems have crashed / stopped")
             return None
             
         #wait 2 seconds before trying to connect to the server
-        time.sleep(2)
-    print("Openvisualizer seems correctly running")
-
-    return(t_openvisualizer)
-
+        time.sleep(1)
+ 
+ 
 
 #start the web client part
 def openwebserver_start(config):
