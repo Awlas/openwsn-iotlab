@@ -28,18 +28,19 @@ from queue import Queue, Empty
 def reader(proc, pipe, queue):
     print("{0}/{1}: process started".format(proc, pipe))
 
-
-    for line in iter(pipe.readline, b''):
-        queue.put((pipe, line))
-        
-        #print(pipe)
-        if proc.poll() is not None:
-            print("{0}/{1}: process terminated".format(proc, pipe))
-            queue.put(None)
-            return
-    #    except:
-    #        print("error reader() {0}".format(sys.exc_info()[0]))
-    #        print(proc.poll())
+    while True:
+        try:
+            line = pipe.readline()
+            queue.put((pipe, line))
+            
+            if proc.poll() is not None:
+                print("{0}/{1}: process terminated".format(proc, pipe))
+                queue.put(None)
+                return
+                
+        except:
+            print("error reader() {0}".format(sys.exc_info()[0]))
+            print(proc.poll())
  
     print("end of reader()")
 
@@ -49,7 +50,7 @@ def reader(proc, pipe, queue):
 def run_command_printrealtime(cmd, path=None, timeout=None):
     
     print("CMD: {0}".format(cmd))
-    process = subprocess.Popen(cmd, shell=True, stdin=open(os.devnull), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=path, close_fds=True, universal_newlines=True, bufsize=1)
+    process = subprocess.Popen(cmd, shell=True, stdin=open(os.devnull), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=path, close_fds=True, universal_newlines=True, bufsize=0)
 
     #queue for stdout + stderr
     q = Queue()
@@ -133,9 +134,20 @@ def root_verif():
         sys.exit(2)
 
 
-
-
-
+#ipv6 rules
+def ip6table_install():
+    CMD="sudo ip6tables -S | grep \"ipv6-icmp -j DROP\""
+    process,out, err = run_command(CMD)
+    if (out.find("-A OUTPUT -p") != -1):
+        print("IPV6 table rule already exists for ICMPv6 packets")
+    else:
+        CMD="sudo ip6tables -A OUTPUT -p icmpv6  -j DROP"
+        print(CMD)
+        process,out, err = run_command(CMD)
+        print("IPV6 table rule inserted for ICMPv6 packets")
+    
+    print("")
+#sudo ip6tables -D  OUTPUT -p icmpv6  -j DROP
 
 #----- Experiments control
 
@@ -148,11 +160,14 @@ def compilation_firmware(config):
         cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
     elif (config['anycast']):
         cmd=cmd + " scheduleopt=anycast "
-    cmd=cmd + " stackcfg=badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
+    cmd=cmd + " stackcfg=adaptive-msf,badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
     cmd=cmd + " oos_openwsn "
 
-    run_command_printrealtime(cmd=cmd, path=config['code_fw_src'])
+    process, out, err = run_command_printrealtime(cmd=cmd, path=config['code_fw_src'])
 
+    if (process.returncode != 0):
+        print("Compilation has failed")
+        sys.exit(-5)
 
 
 # get the iotlab id for a runnning experiment (to resume it)
@@ -168,6 +183,8 @@ def get_running_id(config):
         #Site identification (if the experiment is already running)
         cmd="iotlab-experiment get -i " + str(exp_id_running) + " -n"
         process,output,err = run_command(cmd=cmd)
+        
+        print("running experiment: {0}".format(exp_id_running))
     except KeyError:
         print("No running experiment")
         return
@@ -177,30 +194,56 @@ def get_running_id(config):
         #nothing returned
     
     #to verify that the experiment is matching with my params
-    infos=json.loads(output)
-    exp_site=infos["items"][0]["site"]
-    if (config['site'] != exp_site):
-        print("the site of the running experiment doesn't match: {0} != {1}".format(config['site'], exp_site))
-    
-    #nodes identification
-    print("Verification that the list of nodes is correct for the exp_id {0}".format(exp_id_running))
-    for node in infos["items"]:
-        print("  -> {0}".format(node["network_address"]))
-        sp = node["network_address"].split(".")
-        sp2 = sp[0].split("-")
-        node_id = int(sp2[1])
-        if node_id not in config['dagroots_list']:
-            if node_id not in config['nodes_list']:
-                print("     {0} is present neither in {1} nor in {2}".format(
-                    sp2[1],
-                    config['dagroots_list'],
-                    config['nodes_list']
-                ))
-                return
+    if config['exp_resume_verif'] :
+        infos=json.loads(output)
+        exp_site=infos["items"][0]["site"]
+        if (config['site'] != exp_site):
+            print("the site of the running experiment doesn't match: {0} != {1}".format(config['site'], exp_site))
+        
+        #nodes identification
+        print("Verification that the list of nodes is correct for the exp_id {0}".format(exp_id_running))
+        for node in infos["items"]:
+            print("  -> {0}".format(node["network_address"]))
+            sp = node["network_address"].split(".")
+            sp2 = sp[0].split("-")
+            node_id = int(sp2[1])
+            if node_id not in config['dagroots_list']:
+                if node_id not in config['nodes_list']:
+                    print("     {0} is present neither in {1} nor in {2}".format(
+                        sp2[1],
+                        config['dagroots_list'],
+                        config['nodes_list']
+                    ))
+                    return
+                else:
+                    print("     {0} is a node (in {1})".format(node_id, config['nodes_list']))
             else:
-                print("     {0} is a node (in {1})".format(node_id, config['nodes_list']))
-        else:
-            print("     {0} is a dagroot (in {1})".format(node_id, config['dagroots_list']))
+                print("     {0} is a dagroot (in {1})".format(node_id, config['dagroots_list']))
+
+    #get the ids of the running exp
+    else:
+        config['nodes_list'].clear()
+    
+        infos=json.loads(output)
+        exp_site=infos["items"][0]["site"]
+        if (config['site'] != exp_site):
+            print("the site of the running experiment doesn't match: {0} != {1}".format(config['site'], exp_site))
+        
+        #nodes identification
+        for node in infos["items"]:
+            print("  -> {0}".format(node["network_address"]))
+            sp = node["network_address"].split(".")
+            sp2 = sp[0].split("-")
+            node_id = int(sp2[1])
+
+            config['nodes_list'].append(node_id)
+
+        #dagroot = first node
+        config['nodes_list'].sort(key=int)
+        config['dagroots_list'] = [config['nodes_list'][0], ]
+        config['nodes_list'].remove(config['dagroots_list'][0])
+
+
 
     return(exp_id_running)
 
@@ -287,6 +330,19 @@ def openvisualizer_install(config):
     else:
         print("Installation ok")
 
+
+#install the last version of coap
+def coap_install(config):
+    print("Install the current version of CoAP")
+    cmd="pip2 install -e ."
+    process,output,err = run_command(cmd=cmd, path=config['code_coap_src'])
+    print(err)
+    
+    if (process.returncode != 0):
+        print("Installation of coap has failed")
+        exit(-7)
+    else:
+        print("Installation ok")
 
 
 #generated the configuration file (for logging)
@@ -382,7 +438,7 @@ def openvisualizer_start(config):
     while True:
         process,output,err = run_command(cmd=cmd)
         print("client: \n{0}".format(output))
-        #print(output.find("Connection refused"))
+        print(output.find("Connection refused"))
         
         #connected -> openvisualizer is running
         if output.find("Connection refused") == -1:
@@ -425,7 +481,16 @@ def mote_boot(exp_id):
 def dagroot_set(config):
     for node in config['dagroots_list']:
         cmd="openv-client root m3-" + str(node) +  "." + config['site'] + ".iot-lab.info"
-        process = run_command_printrealtime(cmd=cmd)
+        process,out,err = run_command(cmd=cmd)
+        
+        print("out {0}".format(out))
+        print("err {0}".format(err))
+
+
+        if (out.find("Make sure the motes are booted and provide a 16B mote address or a port ID to set the DAG root") != -1):
+            print("the dagroot configuration failed")
+            return False
+        return True
 
 
 

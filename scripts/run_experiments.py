@@ -23,7 +23,8 @@ import json
 #custom libraries
 import iotlabowsn
 
-
+NEWEXP = False
+COMPIL = True
 
 #configuration for the experimenal setup (what stays unchanged)
 def configuration_set():
@@ -40,8 +41,9 @@ def configuration_set():
     # Metadata for experiments
     config['user']="theoleyr"
     config['exp_duration']=180        # for the iot lab reservation (collection of runs), in minutes
-    config['subexp_duration']=1      # for one run (one set of parameters), in minutes
+    config['subexp_duration']=60      # for one run (one set of parameters), in minutes
     config['exp_resume']=True
+    config['exp_resume_verif'] = False  # verification that the motes are those specified
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
     # Parameters of the experiment
@@ -51,7 +53,8 @@ def configuration_set():
     config['site']="grenoble"
     config['maxid']=289             #discard larger node's ids
     config['minid']=70              #discard smaller node's ids
-  
+    config['maxspaceid']=6          #max separation with the closest id
+    
     # list of motes
     #config['nodes_list']=[ 60 , 64 ]       #selected at runti, depending on the platform state
     #config['dagroots_list']=[ 43 ]
@@ -63,6 +66,14 @@ def configuration_set():
         print("{0} does not exist".format(config['code_sw_src']))
         exit(-4)
     config['code_sw_gitversion']="525b684"
+
+    # coap directory
+    config['code_coap_src'] = config['path_initial'] + "/../coap/"
+    if (os.path.exists(config['code_coap_src']) == False):
+        print("{0} does not exist".format(config['code_coap_src']))
+        exit(-4)
+    config['code_coap_gitversion']="5df88ab"
+
 
     # firmware part
     config['code_fw_src']= config['path_initial'] + "/../openwsn-fw/"
@@ -134,7 +145,6 @@ def nodes_selection(config, nbnodes):
     #construct the list of motes
     print_header("Nodes Selection")
     testbed_nodealive_list = iotlabowsn.get_nodes_list(config["site"], config["archi"], "Alive")
-    maxspace_between_ids=15
     nbtest=0
     config['nodes_list'] = []
 
@@ -160,7 +170,7 @@ def nodes_selection(config, nbnodes):
                 
                 #an id in the list is close to this novel one
                 for node in config['nodes_list']:
-                    if (abs(node - new) <= maxspace_between_ids):
+                    if (abs(node - new) <= config['maxspaceid']):
                         connected = True
                         break
                     
@@ -200,6 +210,8 @@ def experiment_reservation(config):
         exp_id = iotlabowsn.get_running_id(config);
     if exp_id is not None:
         print("Resume the experiment id {0}".format(exp_id))
+        print("with the motes {0}".format(config['nodes_list']))
+        print("and dagroots {0}".format(config['dagroots_list']))
     else:
         exp_id = iotlabowsn.exp_start(config)
     
@@ -240,11 +252,12 @@ def experiment_execute(config):
     
     # ---- COMPIL + FLASHING----
 
-    print_header("Compilation")
-    iotlabowsn.compilation_firmware(config)
+    if COMPIL:
+        print_header("Compilation")
+        iotlabowsn.compilation_firmware(config)
 
-    print_header("Flashing")
-    iotlabowsn.flashing_motes(exp_id, config)
+        print_header("Flashing")
+        iotlabowsn.flashing_motes(exp_id, config)
 
 
     # ---- OpenVisualizer ----
@@ -262,28 +275,27 @@ def experiment_execute(config):
     
 
     # ---- Boots the motes ----
-
     print_header("Configure Motes")
     iotlabowsn.mote_boot(exp_id)
-    iotlabowsn.dagroot_set(config)
+    valid_dagroot_config = iotlabowsn.dagroot_set(config)
+    if (valid_dagroot_config is True):
 
+        # ---- Exp running ----
 
-    # ---- Exp running ----
+        print_header("Execution")
+        print("gpid me: {0}".format(os.getpgid(os.getpid())))
+        print("pid me: {0}".format(os.getpid()))
 
-    print_header("Execution")
-    print("gpid me: {0}".format(os.getpgid(os.getpid())))
-    print("pid me: {0}".format(os.getpid()))
+        print("nb threads = {0}".format(threading.active_count()))
 
-    print("nb threads = {0}".format(threading.active_count()))
-
-    #every second, let us verify that the openvizualizer thread is still alive
-    counter = 0
-    while (t_openvisualizer is not None and t_openvisualizer.is_alive()):
-        counter = counter + 1
-        if (counter >= 60):
-            print("thread {0} is alive, {1}s < {2}min".format(t_openvisualizer, time.time() - time_start, config['subexp_duration']))
-            counter = 0
-        time.sleep(1)
+        #every second, let us verify that the openvizualizer thread is still alive
+        counter = 0
+        while (t_openvisualizer is not None and t_openvisualizer.is_alive()):
+            counter = counter + 1
+            if (counter >= 60):
+                print("thread {0} is alive, {1}s < {2}min".format(t_openvisualizer, time.time() - time_start, config['subexp_duration']))
+                counter = 0
+            time.sleep(1)
 
     #everything was ok -> cleanup
     print("{0} >= ? {1} -> {2}".format(time.time() - time_start+2 , 60*config['subexp_duration'], time.time() - time_start +2 >= 60 * config['subexp_duration'] is not True))
@@ -311,6 +323,7 @@ def experiment_execute(config):
 
 print_header("Initialization")
 iotlabowsn.root_verif()
+iotlabowsn.ip6table_install()
 config = configuration_set()
 config['seed'] = 2
 random.seed(config['seed'])
@@ -318,6 +331,7 @@ random.seed(config['seed'])
 
 #openvisualizer
 iotlabowsn.openvisualizer_install(config)
+iotlabowsn.coap_install(config)
 
 #Parameters for this set of experiments
 config['badmaxrssi'] = 100
@@ -326,10 +340,10 @@ config['lowestrankfirst'] = 1
 
 
 #replay the same values 5 times
-for counter in range(5):
+for counter in range(1):
     
     #selects the nodes
-    for nbnodes in [10, ]:
+    for nbnodes in [5, ]:
         
         config = nodes_selection(config, nbnodes)
 
@@ -337,7 +351,8 @@ for counter in range(5):
         exp_id = experiment_reservation(config)
 
         # test the two different solutions
-        for anycast in [False , True]:
+        #for anycast in [False , True]:
+        for anycast in [True]:
             time_start = time.time()
             
             #param
@@ -350,6 +365,7 @@ for counter in range(5):
 
         #stop the experiment
         iotlabowsn.exp_stop(exp_id)
+        time.sleep(4.0)
 
 
 
@@ -359,3 +375,8 @@ print("nb threads = {0}".format(threading.active_count()))
 
 sys.exit(0)
 
+
+
+
+#NB: to disable icmpv6 unreachable (when coap packets cannot be delivered outside)
+#ip6tables -I OUTPUT -p icmpv6  -j DROP
