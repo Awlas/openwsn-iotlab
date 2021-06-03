@@ -36,8 +36,10 @@ def configuration_set():
     
     config['path_results_root'] = "/home/theoleyre/openwsn/results/"
     config['path_results_root_crash'] = config['path_results_root'] + "/crash"
+    config['path_results_root_finished'] = config['path_results_root'] + "/valid"
     os.makedirs(config['path_results_root_crash'], exist_ok=True)
-    
+    os.makedirs(config['path_results_root_finished'], exist_ok=True)
+
     # Metadata for experiments
     config['user']="theoleyr"
     config['exp_duration']=180        # for the iot lab reservation (collection of runs), in minutes
@@ -53,7 +55,7 @@ def configuration_set():
     config['site']="grenoble"
     config['maxid']=289             #discard larger node's ids
     config['minid']=70              #discard smaller node's ids
-    config['maxspaceid']=6          #max separation with the closest id
+    config['maxspaceid']=7          #max separation with the closest id
     
     # list of motes
     #config['nodes_list']=[ 60 , 64 ]       #selected at runti, depending on the platform state
@@ -107,12 +109,15 @@ def cleanup_subexp(error=False):
     print_header("Cleanup")
 
     if (error == False):
-        print("Everything was ok")
+        print("Everything was ok -> move the files {0} in {1}". format(config['path_results'], config['path_results_root_finished']))
+
         file = open(config['path_results'] + "/_ok.txt", 'w')
         file.write("ok\n")
         file.close()
+        
+        shutil.move(config['path_results'], config['path_results_root_finished'])
     else:
-        print("Something went wrong -> move the files {0} in {1}". format(config['path_results'], config['path_results_root']+"crash"))
+        print("Something went wrong -> move the files {0} in {1}". format(config['path_results'], config['path_results_root_crash']))
         shutil.move(config['path_results'], config['path_results_root_crash'])
         
     del config['path_results']
@@ -226,10 +231,11 @@ def experiment_execute(config):
     #final results
     dirs_res = os.listdir(config['path_results_root'])
     dirs_trash =  os.listdir(config['path_results_root_crash'])
+    dirs_finished =  os.listdir(config['path_results_root_finished'])
     while (True):
         config['path_results'] = "owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         print("List of existing results: {0}, {1}".format(dirs_res, dirs_trash))
-        if (config['path_results'] not in dirs_res and config['path_results'] not in dirs_trash):
+        if (config['path_results'] not in dirs_res and config['path_results'] not in dirs_trash and config['path_results'] not in dirs_finished):
             break;
         print("{0} already exists, find another directory name.".format(config['path_results']))
     config['path_results'] = config['path_results_root'] + config['path_results']
@@ -334,8 +340,8 @@ iotlabowsn.openvisualizer_install(config)
 iotlabowsn.coap_install(config)
 
 #Parameters for this set of experiments
-config['badmaxrssi'] = 100
-config['goodminrssi'] = 100
+config['badmaxrssi'] = -100
+config['goodminrssi'] = -100
 config['lowestrankfirst'] = 1
 
 
@@ -343,7 +349,7 @@ config['lowestrankfirst'] = 1
 for counter in range(1):
     
     #selects the nodes
-    for nbnodes in [5, ]:
+    for nbnodes in [4, ]:
         
         config = nodes_selection(config, nbnodes)
 
