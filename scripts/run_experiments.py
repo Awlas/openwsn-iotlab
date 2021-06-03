@@ -55,7 +55,7 @@ def configuration_set():
     config['site']="grenoble"
     config['maxid']=289             #discard larger node's ids
     config['minid']=70              #discard smaller node's ids
-    config['maxspaceid']=7          #max separation with the closest id
+    config['maxspaceid']=9          #max separation with the closest id
     
     # list of motes
     #config['nodes_list']=[ 60 , 64 ]       #selected at runti, depending on the platform state
@@ -331,7 +331,7 @@ print_header("Initialization")
 iotlabowsn.root_verif()
 iotlabowsn.ip6table_install()
 config = configuration_set()
-config['seed'] = 2
+config['seed'] = int(time.time()) #1
 random.seed(config['seed'])
 
 
@@ -349,7 +349,7 @@ config['lowestrankfirst'] = 1
 for counter in range(1):
     
     #selects the nodes
-    for nbnodes in [4, ]:
+    for nbnodes in [8, ]:
         
         config = nodes_selection(config, nbnodes)
 
