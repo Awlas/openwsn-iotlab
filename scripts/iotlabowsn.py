@@ -432,27 +432,32 @@ def openvisualizer_start(config):
     t_openvisualizer.start()
     print("Thread {0} started".format(t_openvisualizer))
 
+    return(t_openvisualizer)
 
-    #wait that openvizualizer is properly initiated
+
+#return the nb of motes attached to openvisualizer
+def openvisualizer_nbmotes():
+
     cmd="openv-client motes"
-    while True:
-        process,output,err = run_command(cmd=cmd)
-        print("client: \n{0}".format(output))
-        print(output.find("Connection refused"))
+    process,output,err = run_command(cmd=cmd)
+    print("client: \n{0}".format(output))
+    #print(output.find("Connection refused"))
         
-        #connected -> openvisualizer is running
-        if output.find("Connection refused") == -1:
-            print("Openvisualizer seems correctly running")
-            return(t_openvisualizer)
+    #connected -> openvisualizer is running
+    if output.find("Connection refused") == -1:
+        nbmotes = 0
+        
+        #count  the number of lines that contain an m3 mote
+        for line in output.split('\n'):
+            if line.find("m3") != -1:
+                nbmotes = nbmotes + 1
+        return(nbmotes)
 
-        #crash
-        if t_openvisualizer.is_alive() is False:
-            print("Openvisualizer seems have crashed / stopped")
-            return None
-            
-        #wait 2 seconds before trying to connect to the server
-        time.sleep(1)
- 
+    else:
+        return None
+        
+      
+
  
 
 #start the web client part

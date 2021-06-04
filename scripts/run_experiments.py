@@ -268,11 +268,40 @@ def experiment_execute(config):
 
     # ---- OpenVisualizer ----
 
-    time_start = time.time()
     print_header("Openvizualiser")
     iotlabowsn.openvisualizer_create_conf_file(config)
-    t_openvisualizer = iotlabowsn.openvisualizer_start(config)
-    
+  
+    #wait that openvizualizer is properly initiated
+    nb_try = 0
+    while True:
+        time_start = time.time()
+        t_openvisualizer = iotlabowsn.openvisualizer_start(config)
+        nbmotes = None
+        while nbmotes is None:
+            nbmotes = iotlabowsn.openvisualizer_nbmotes()
+        
+            print("nb motes : {0}".format(nbmotes))
+        
+            #crash -> restart openvisualizer
+            if t_openvisualizer.is_alive() is False:
+                print("Openvisualizer seems have crashed / stopped")
+                break
+                
+            #wait 2 seconds before trying to connect to the server
+            if nbmotes is None:
+                print("openvisualizer is not yet running")
+                time.sleep(1)
+                
+        #the nb of running motes matches the config
+        if (nbmotes == len(config['nodes_list']) + len(config['dagroots_list'])):
+            print("All the motes are connected to openvisualizer")
+            break
+        else:
+            print("Only {0} motes are connected, we restart openvisualizer {1} try".format(nbmotes, nb_try))
+            
+        
+        nb_try = nb_try + 1
+  
 
     # ---- Openweb server (optional, for debuging via a web interface) ----
 
