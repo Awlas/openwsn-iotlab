@@ -299,9 +299,23 @@ def experiment_execute(config):
         else:
             print("Only {0} motes are connected, we restart openvisualizer {1} try".format(nbmotes, nb_try))
             
-        
+        #else, we have a bug
         nb_try = nb_try + 1
-  
+        
+        #stops openvisualizer
+        if t_openvisualizer.is_alive() is True:
+            print("Cleanning up children process".format(t_openvisualizer))
+            process = psutil.Process(os.getpid())
+            for proc in process.children(recursive=True):
+                print("killing {0}".format(proc))
+                proc.kill()
+                print("..killed")
+        
+        if nb_try > 10:
+            print("Openvisualizer seems failing even after having been restarted {0} times, stops here". format(nb_try))
+            sys.exit(-3)
+            
+        time.sleep(3)
 
     # ---- Openweb server (optional, for debuging via a web interface) ----
 
