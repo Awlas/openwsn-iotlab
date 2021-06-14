@@ -42,8 +42,8 @@ def configuration_set():
 
     # Metadata for experiments
     config['user']="theoleyr"
-    config['exp_duration']=180        # for the iot lab reservation (collection of runs), in minutes
-    config['subexp_duration']=60      # for one run (one set of parameters), in minutes
+    config['exp_duration']=220        # for the iot lab reservation (collection of runs), in minutes
+    config['subexp_duration']=90      # for one run (one set of parameters), in minutes
     config['exp_resume']=True
     config['exp_resume_verif'] = False  # verification that the motes are those specified
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -392,7 +392,7 @@ config['lowestrankfirst'] = 1
 for counter in range(1):
     
     #selects the nodes
-    for nbnodes in [8, ]:
+    for nbnodes in [8, 16, 32]:
         
         config = nodes_selection(config, nbnodes)
 
@@ -401,7 +401,7 @@ for counter in range(1):
 
         # test the two different solutions
         #for anycast in [False , True]:
-        for anycast in [True]:
+        for anycast in [True, False]:
             time_start = time.time()
             
             #param
