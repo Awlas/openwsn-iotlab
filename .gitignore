@@ -9,6 +9,8 @@ scripts/logs/*
 scripts/jupyter/logs/*
 scripts/bash/logs/*
 */*.xcworkspace*/*
+scripts/iotlab-experiments.xcworkspace/
+analysis/
 openwsn-cca.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 openwsn-cca.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
 openwsn-cca.xcworkspace/xcuserdata/theoleyre.xcuserdatad/UserInterfaceState.xcuserstate
@@ -22,3 +24,5 @@ scripts/iotlab-experiments.xcworkspace/xcuserdata/theoleyre.xcuserdatad/UserInte
 scripts/bash/exp-iotlab.xcworkspace/contents.xcworkspacedata
 scripts/__pycache__/iotlabowsn.cpython-38.pyc
 openwsn-cca.xcworkspace/contents.xcworkspacedata
+scripts/iotlab-experiments.xcworkspace/xcuserdata/theoleyre.xcuserdatad/UserInterfaceState.xcuserstate
+scripts/__pycache__/iotlabowsn.cpython-38.pyc
