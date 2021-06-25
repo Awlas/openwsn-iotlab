@@ -4,6 +4,10 @@ REPO_FW=https://github.com/ftheoleyre/openwsn-fw.git
 REPO_SW=https://github.com/ftheoleyre/openvisualizer.git
 REPO_COAP=https://github.com/openwsn-berkeley/coap.git
 REPO_MQTT=https://github.com/eclipse/paho.mqtt.python
+REPO_DATA=https://github.com/ftheoleyre/openwsn-data.git
+
+
+
 
 # Current repository
 REP=`pwd`
@@ -118,6 +122,33 @@ sudo python setup.py install
 
 
 
+
+# ------- OPENWSN DATA Analysis -----------
+
+echo "-------------------------------------------------"
+echo "installing conda"
+cd $REP
+sudo apt-get install libgl1-mesa-glx libegl1-mesa libxrandr2 libxrandr2 libxss1 libxcursor1 libxcomposite1 libasound2 libxi6 libxtst6 curl
+curl -O https://repo.anaconda.com/archive/Anaconda3-2021.05-Linux-x86_64.sh
+chmod u+x Anaconda3-2021.05-Linux-x86_64.sh
+./Anaconda3-2021.05-Linux-x86_64.sh
+./anaconda3/bin/conda init zsh
+conda update conda
+
+
+echo "-------------------------------------------------"
+echo "Cloning openwsn-data"
+cd $REP
+git clone $REPO_DATA
+cd openwsn-data
+conda env create -f openwsn-data.yml
+
+
+
+
+
+
+
 echo "-------------------------------------------------"
 echo "REQ"
 
@@ -125,3 +156,4 @@ echo "REQ"
 echo "You have still to register your iotlab credentials with the command"
 echo "iotlab-auth -u $USER -p PASSWORD"
 echo "and test everything with scripts/start_and_flash.sh"
+
