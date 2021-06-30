@@ -155,13 +155,13 @@ def ip6table_install():
 #compiles a firmware
 def compilation_firmware(config):
     cmd="scons board=" + config['board'] + " toolchain=" + config['toolchain'] + " "
-    cmd=cmd +" boardopt=printf modules=coap,udp apps=cexample debugopt=CCA,schedule,rank,sixtop "
+    cmd=cmd +" boardopt=printf modules=coap,udp apps=cexample debugopt=CCA,schedule,sixtop "
 #    cmd=cmd +" boardopt=printf modules=coap,udp apps=cjoin,cexample debugopt=CCA,schedule,rank,sixtop "
     if (config['anycast'] and config['lowestrankfirst']):
         cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
     elif (config['anycast']):
         cmd=cmd + " scheduleopt=anycast "
-    cmd=cmd + " stackcfg=adaptive-msf,badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
+    cmd=cmd + " stackcfg=adaptive-msf,cexampleperiod:"+str(config['cexampleperiod'])+",badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
     cmd=cmd + " oos_openwsn "
 
     process, out, err = run_command_printrealtime(cmd=cmd, path=config['code_fw_src'])

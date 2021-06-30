@@ -42,8 +42,8 @@ def configuration_set():
 
     # Metadata for experiments
     config['user']="theoleyr"
-    config['exp_duration']=220        # for the iot lab reservation (collection of runs), in minutes
-    config['subexp_duration']=90      # for one run (one set of parameters), in minutes
+    config['subexp_duration']=60      # for one run (one set of parameters), in minutes
+    config['exp_duration']=config['subexp_duration'] * 2 + 30        # for the iot lab reservation (collection of runs), in minutes (two experiments + a safety margin)
     config['exp_resume']=True
     config['exp_resume_verif'] = False  # verification that the motes are those specified
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -52,15 +52,13 @@ def configuration_set():
     config['board']="iot-lab_M3"
     config['toolchain']="armgcc"
     config['archi']="m3"
-    config['site']="grenoble"
-    config['maxid']=289             #discard larger node's ids
-    config['minid']=70              #discard smaller node's ids
+    config['site']="strasbourg"
+#    config['maxid']=289             #discard larger node's ids
+#    config['minid']=70              #discard smaller node's ids
+    config['maxid']=800              #discard smaller node's ids
+    config['minid']=1              #discard smaller node's ids
     config['maxspaceid']=9          #max separation with the closest id
     
-    # list of motes
-    #config['nodes_list']=[ 60 , 64 ]       #selected at runti, depending on the platform state
-    #config['dagroots_list']=[ 43 ]
-
     
     # openvisualizer directory
     config['code_sw_src'] = config['path_initial'] + "/../openvisualizer/"
@@ -389,12 +387,17 @@ config['lowestrankfirst'] = 1
 
 
 #replay the same values 5 times
-for counter in range(1):
+for counter in range(5):
     
     #selects the nodes
-    for nbnodes in [8, 16, 32]:
+    for nbnodes in [15, 20, 25]:
+        print("---- {0} nodes".format(nbnodes))
         
         config = nodes_selection(config, nbnodes)
+
+        #application period
+        config['cexampleperiod'] = 500 * nbnodes
+
 
         #reservation of the experiments
         exp_id = experiment_reservation(config)
