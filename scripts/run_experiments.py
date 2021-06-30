@@ -45,18 +45,16 @@ def configuration_set():
     config['subexp_duration']=60      # for one run (one set of parameters), in minutes
     config['exp_duration']=config['subexp_duration'] * 2 + 30        # for the iot lab reservation (collection of runs), in minutes (two experiments + a safety margin)
     config['exp_resume']=True
-    config['exp_resume_verif'] = False  # verification that the motes are those specified
+    config['exp_resume_verif'] = True  # verification that the motes are those specified
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
     # Parameters of the experiment
     config['board']="iot-lab_M3"
     config['toolchain']="armgcc"
     config['archi']="m3"
-    config['site']="strasbourg"
-#    config['maxid']=289             #discard larger node's ids
-#    config['minid']=70              #discard smaller node's ids
-    config['maxid']=800              #discard smaller node's ids
-    config['minid']=1              #discard smaller node's ids
+    config['site']="grenoble"
+    config['maxid']=289             #discard larger node's ids
+    config['minid']=70              #discard smaller node's ids
     config['maxspaceid']=9          #max separation with the closest id
     
     
