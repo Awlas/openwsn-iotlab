@@ -156,7 +156,6 @@ def ip6table_install():
 def compilation_firmware(config):
     cmd="scons board=" + config['board'] + " toolchain=" + config['toolchain'] + " "
     cmd=cmd +" boardopt=printf modules=coap,udp apps=cexample debugopt=CCA,schedule,sixtop "
-#    cmd=cmd +" boardopt=printf modules=coap,udp apps=cjoin,cexample debugopt=CCA,schedule,rank,sixtop "
     if (config['anycast'] and config['lowestrankfirst']):
         cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
     elif (config['anycast']):

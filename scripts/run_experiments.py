@@ -45,7 +45,7 @@ def configuration_set():
     config['subexp_duration']=60      # for one run (one set of parameters), in minutes
     config['exp_duration']=config['subexp_duration'] * 2 + 30        # for the iot lab reservation (collection of runs), in minutes (two experiments + a safety margin)
     config['exp_resume']=True
-    config['exp_resume_verif'] = True  # verification that the motes are those specified
+    config['exp_resume_verif'] = False  # verification that the motes are those specified
     config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
     # Parameters of the experiment
