@@ -261,12 +261,17 @@ def exp_start(config):
     for node in config['nodes_list'] :
         cmd= cmd + "+" + str(node)
     
-    process,output,err = run_command(cmd=cmd)
-    print(output)
-    infos=json.loads(output)
-    exp_id_running=infos["id"]
-    return(exp_id_running)
-
+    try:
+        print(cmd)
+        process,output,err = run_command(cmd=cmd)
+        print(output)
+        infos=json.loads(output)
+        print(infos)
+        exp_id_running=infos["id"]
+        return(exp_id_running)
+    except:
+        return None
+    
 
 # waits that the id is running
 def exp_wait_running(exp_id):

@@ -126,8 +126,8 @@ def kill_all(sig, frame):
     if 'path_results' in config:
         cleanup_subexp(sig == signal.SIGUSR1)
     #stop the experiment (iotlab)
-    if exp_id != 0:
-        iotlabowsn.exp_stop(exp_id)
+    if config['exp_id'] != 0:
+        iotlabowsn.exp_stop(config['exp_id'])
 
     #kill everything
     process = psutil.Process(os.getpid())
@@ -208,18 +208,18 @@ def nodes_selection(config, nbnodes):
 def experiment_reservation(config):
     print_header("Reservation (experiment)")
     if ( config['exp_resume'] == True):
-        exp_id = iotlabowsn.get_running_id(config);
-    if exp_id is not None:
-        print("Resume the experiment id {0}".format(exp_id))
+        config['exp_id'] = iotlabowsn.get_running_id(config);
+    if config['exp_id'] is not None:
+        print("Resume the experiment id {0}".format(config['exp_id']))
         print("with the motes {0}".format(config['nodes_list']))
         print("and dagroots {0}".format(config['dagroots_list']))
     else:
-        exp_id = iotlabowsn.exp_start(config)
+        config['exp_id'] = iotlabowsn.exp_start(config)
     
     print("Wait the experiment is in running mode")
-    iotlabowsn.exp_wait_running(exp_id)
+    iotlabowsn.exp_wait_running(config['exp_id'])
     
-    return exp_id
+    return config['exp_id']
 
 
 def experiment_execute(config):
@@ -259,7 +259,7 @@ def experiment_execute(config):
         iotlabowsn.compilation_firmware(config)
 
         print_header("Flashing")
-        iotlabowsn.flashing_motes(exp_id, config)
+        iotlabowsn.flashing_motes(config['exp_id'], config)
 
 
     # ---- OpenVisualizer ----
@@ -321,7 +321,7 @@ def experiment_execute(config):
 
     # ---- Boots the motes ----
     print_header("Configure Motes")
-    iotlabowsn.mote_boot(exp_id)
+    iotlabowsn.mote_boot(config['exp_id'])
     valid_dagroot_config = iotlabowsn.dagroot_set(config)
     if (valid_dagroot_config is True):
 
@@ -362,43 +362,21 @@ def experiment_execute(config):
 
 
 
-
-# ----- INIT
-
-
-print_header("Initialization")
-iotlabowsn.root_verif()
-iotlabowsn.ip6table_install()
-config = configuration_set()
-config['seed'] = int(time.time()) #1
-random.seed(config['seed'])
-
-
-#openvisualizer
-iotlabowsn.openvisualizer_install(config)
-iotlabowsn.coap_install(config)
-
-#Parameters for this set of experiments
-config['badmaxrssi'] = -100
-config['goodminrssi'] = -100
-config['lowestrankfirst'] = 1
-
-
-#replay the same values 5 times
-for counter in range(5):
-    
+#starts a sequence of experiments, with a variable nb of nodes
+def experiment_running_sequence(config):
+         
     #selects the nodes
-    for nbnodes in [15, 20, 25]:
-        print("---- {0} nodes".format(nbnodes))
+    for nbnodes in [3, 5, 8, 10, 12, 15]:
         
+        print("---- {0} nodes".format(nbnodes))
         config = nodes_selection(config, nbnodes)
-
+        
         #application period
         config['cexampleperiod'] = 500 * nbnodes
 
 
         #reservation of the experiments
-        exp_id = experiment_reservation(config)
+        config['exp_id'] = experiment_reservation(config)
 
         # test the two different solutions
         #for anycast in [False , True]:
@@ -414,16 +392,80 @@ for counter in range(5):
             print("nb seconds runtime for this experiment: {0}".format(time.time() - time_start))
 
         #stop the experiment
-        iotlabowsn.exp_stop(exp_id)
+        iotlabowsn.exp_stop(config['exp_id'])
         time.sleep(4.0)
 
 
+#starts one fixed experiment for fault tolerance
+def experiment_running_faulttolerance(config):
+         
+    #fixed scenario for fault tolerance
+    config['nodes_list']=[ 332 , 346, 358 ]
+    config['dagroots_list']=[ 316 ]
+    nbnodes = len(config['nodes_list']) + len (config['dagroots_list'])
 
-#if we are here, this means that the collection of experiments is finished
-print("End of the computation")
-print("nb threads = {0}".format(threading.active_count()))
+    #TODO: discard forbidden nodes (eg. 331)
 
-sys.exit(0)
+    #application period
+    config['cexampleperiod'] = 1000
+
+    #reservation of the experiments
+    config['exp_id'] = experiment_reservation(config)
+
+    # test the two different solutions
+    #for anycast in [False , True]:
+    for anycast in [False, True]:
+        time_start = time.time()
+        
+        #param
+        config['anycast'] = anycast
+        print_header("anycast={0}, nbnodes={1}".format(anycast, nbnodes))
+
+        experiment_execute(config)
+        
+        print("nb seconds runtime for this experiment: {0}".format(time.time() - time_start))
+
+    #stop the experiment
+    iotlabowsn.exp_stop(config['exp_id'])
+    time.sleep(4.0)
+
+
+
+
+
+#main (multithreading safe)
+if __name__ == "__main__":
+
+     #----- INIT
+
+    print_header("Initialization")
+    iotlabowsn.root_verif()
+    iotlabowsn.ip6table_install()
+    config = configuration_set()
+    config['seed'] = int(time.time()) #1
+    random.seed(config['seed'])
+
+
+    #openvisualizer
+    iotlabowsn.openvisualizer_install(config)
+    iotlabowsn.coap_install(config)
+
+    #Parameters for this set of experiments
+    config['badmaxrssi'] = -100
+    config['goodminrssi'] = -100
+    config['lowestrankfirst'] = 1
+
+
+    #replay the same values 5 times
+    for counter in range(5):
+        experiment_running_faulttolerance(config)
+        #experiment_running_sequence(config)
+
+    #if we are here, this means that the collection of experiments is finished
+    print("End of the computation")
+    print("nb threads = {0}".format(threading.active_count()))
+
+    sys.exit(0)
 
 
 
