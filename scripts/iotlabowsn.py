@@ -154,6 +154,7 @@ def ip6table_install():
 
 #compiles a firmware
 def compilation_firmware(config):
+    
     cmd="scons board=" + config['board'] + " toolchain=" + config['toolchain'] + " "
     cmd=cmd +" modules=coap,udp apps=cexample debugopt=CCA,schedule,sixtop "
     #cmd=cmd +" boardopt=printf modules=coap,udp apps=cexample debugopt=CCA,schedule,sixtop "
@@ -420,7 +421,7 @@ def openvisualizer_start(config):
         for i in range(len(config['nodes_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['nodes_list'][i]) + "." + config['site'] + ".iot-lab.info "
     elif (config['board'] == "python" ):
-        cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --sim "+ config['nb_nodes'] + " " + config['topology']
+        cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --sim "+ str(config['nb_nodes']) + " " + config['topology']
 
     # stops the previous process
     try:
@@ -455,7 +456,7 @@ def openvisualizer_nbmotes():
         
         #count  the number of lines that contain an m3 mote
         for line in output.split('\n'):
-            if line.find("m3") != -1:
+            if line.find("m3") != -1 or line.find("emulated") != -1:
                 nbmotes = nbmotes + 1
         return(nbmotes)
 

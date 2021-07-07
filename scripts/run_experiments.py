@@ -25,7 +25,10 @@ import iotlabowsn
 
 NEWEXP = False
 COMPIL = True
-
+SIMULATION = True
+    
+    
+    
 #configuration for the experimenal setup (what stays unchanged)
 def configuration_set():
     config = {}
@@ -58,6 +61,13 @@ def configuration_set():
     config['maxspaceid']=9          #max separation with the closest id
     
     
+    #for simulation
+    if SIMULATION:
+        config['board']="python"
+        config['toolchain']="gcc"
+        config['topology']="--load-topology " + config['path_initial'] + "/topologies/topology-3nodes.json"
+    
+    
     # openvisualizer directory
     config['code_sw_src'] = config['path_initial'] + "/../openvisualizer/"
     if (os.path.exists(config['code_sw_src']) == False):
@@ -81,11 +91,7 @@ def configuration_set():
     config['code_fw_gitversion']="515eafa7"
     config['code_fw_bin']=config['code_fw_src']+"build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
     
-    #Only in simulation mode!
-    if (config['board'] == "python"):
-        config['nbnodes']="5"
-        config['topology']="---load-topology " + config['path_initial'] + "/topologies/topology-3nodes.json"
-
+ 
     return(config)
 
 
@@ -258,8 +264,9 @@ def experiment_execute(config):
         print_header("Compilation")
         iotlabowsn.compilation_firmware(config)
 
-        print_header("Flashing")
-        iotlabowsn.flashing_motes(config['exp_id'], config)
+        if config['board']=="iot-lab_M3":
+            print_header("Flashing")
+            iotlabowsn.flashing_motes(config['exp_id'], config)
 
 
     # ---- OpenVisualizer ----
@@ -289,7 +296,7 @@ def experiment_execute(config):
                 time.sleep(1)
                 
         #the nb of running motes matches the config
-        if (nbmotes == len(config['nodes_list']) + len(config['dagroots_list'])):
+        if nbmotes == config['nb_nodes']:
             print("All the motes are connected to openvisualizer")
             break
         else:
@@ -319,10 +326,16 @@ def experiment_execute(config):
     t_openwebserver = iotlabowsn.openwebserver_start(config)
     
 
-    # ---- Boots the motes ----
+    # ---- Boots the motes (not in simulation mode) ----
     print_header("Configure Motes")
-    iotlabowsn.mote_boot(config['exp_id'])
-    valid_dagroot_config = iotlabowsn.dagroot_set(config)
+    if config['board'] == 'lab_M3':
+        iotlabowsn.mote_boot(config['exp_id'])
+        valid_dagroot_config = iotlabowsn.dagroot_set(config)
+    else:
+        valid_dagroot_config = True
+    
+    
+    #--- running experiment verification ----
     if (valid_dagroot_config is True):
 
         # ---- Exp running ----
@@ -366,17 +379,22 @@ def experiment_execute(config):
 def experiment_running_sequence(config):
          
     #selects the nodes
-    for nbnodes in [25]:
+    for nbnodes in [3, 25]:
+        config['nb_nodes'] = nbnodes
         
         print("---- {0} nodes".format(nbnodes))
-        config = nodes_selection(config, nbnodes)
+        if config['board']=="iot-lab_M3":
+            config = nodes_selection(config, nbnodes)
         
         #application period
         config['cexampleperiod'] = 500 * nbnodes
 
 
         #reservation of the experiments
-        config['exp_id'] = experiment_reservation(config)
+        if config['board']=="iot-lab_M3":
+            config['exp_id'] = experiment_reservation(config)
+        else:
+            config['exp_id'] = 0
 
         # test the two different solutions
         #for anycast in [False , True]:
