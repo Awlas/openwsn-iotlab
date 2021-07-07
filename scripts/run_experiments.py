@@ -366,7 +366,7 @@ def experiment_execute(config):
 def experiment_running_sequence(config):
          
     #selects the nodes
-    for nbnodes in [3, 5, 8, 10, 12, 15]:
+    for nbnodes in [25]:
         
         print("---- {0} nodes".format(nbnodes))
         config = nodes_selection(config, nbnodes)
@@ -458,8 +458,8 @@ if __name__ == "__main__":
 
     #replay the same values 5 times
     for counter in range(5):
-        experiment_running_faulttolerance(config)
-        #experiment_running_sequence(config)
+        #experiment_running_faulttolerance(config)
+        experiment_running_sequence(config)
 
     #if we are here, this means that the collection of experiments is finished
     print("End of the computation")
