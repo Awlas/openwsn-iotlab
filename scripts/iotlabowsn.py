@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 
@@ -156,7 +156,7 @@ def ip6table_install():
 def compilation_firmware(config):
     
     cmd="scons board=" + config['board'] + " toolchain=" + config['toolchain'] + " "
-    cmd=cmd +" modules=coap,udp apps=cexample debugopt=CCA,schedule,sixtop "
+    cmd=cmd +" modules=coap,udp apps=cexample debugopt=CCA,schedule,sixtop,MSF logging=1"
     #cmd=cmd +" boardopt=printf modules=coap,udp apps=cexample debugopt=CCA,schedule,sixtop "
     if (config['anycast'] and config['lowestrankfirst']):
         cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
@@ -495,8 +495,8 @@ def dagroot_set(config):
         cmd="openv-client root m3-" + str(node) +  "." + config['site'] + ".iot-lab.info"
         process,out,err = run_command(cmd=cmd)
         
-        print("out {0}".format(out))
-        print("err {0}".format(err))
+        print("out: {0}".format(out))
+        print("err: {0}".format(err))
 
 
         if (out.find("Make sure the motes are booted and provide a 16B mote address or a port ID to set the DAG root") != -1):

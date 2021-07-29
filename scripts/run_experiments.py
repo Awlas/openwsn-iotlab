@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 
@@ -11,6 +11,7 @@ import time
 import sys
 import signal
 import random
+import datetime
 
 # multiprocess
 import threading
@@ -25,7 +26,7 @@ import iotlabowsn
 
 NEWEXP = False
 COMPIL = True
-SIMULATION = True
+SIMULATION = False
     
     
     
@@ -47,9 +48,9 @@ def configuration_set():
     config['user']="theoleyr"
     config['subexp_duration']=60      # for one run (one set of parameters), in minutes
     config['exp_duration']=config['subexp_duration'] * 2 + 30        # for the iot lab reservation (collection of runs), in minutes (two experiments + a safety margin)
-    config['exp_resume']=True
-    config['exp_resume_verif'] = False  # verification that the motes are those specified
-    config['exp_name']="owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    config['exp_resume']=True           # restart an already running experiment (if one exists)
+    config['exp_resume_verif'] = False  # verification that the motes are those specified (in the running exp)
+    config['exp_name']="LS-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
     # Parameters of the experiment
     config['board']="iot-lab_M3"
@@ -215,6 +216,9 @@ def experiment_reservation(config):
     print_header("Reservation (experiment)")
     if ( config['exp_resume'] == True):
         config['exp_id'] = iotlabowsn.get_running_id(config);
+    else:
+        config['exp_id'] = None
+        
     if config['exp_id'] is not None:
         print("Resume the experiment id {0}".format(config['exp_id']))
         print("with the motes {0}".format(config['nodes_list']))
@@ -234,12 +238,7 @@ def experiment_execute(config):
     dirs_res = os.listdir(config['path_results_root'])
     dirs_trash =  os.listdir(config['path_results_root_crash'])
     dirs_finished =  os.listdir(config['path_results_root_finished'])
-    while (True):
-        config['path_results'] = "owsn-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        print("List of existing results: {0}, {1}".format(dirs_res, dirs_trash))
-        if (config['path_results'] not in dirs_res and config['path_results'] not in dirs_trash and config['path_results'] not in dirs_finished):
-            break;
-        print("{0} already exists, find another directory name.".format(config['path_results']))
+    config['path_results'] = "owsn-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     config['path_results'] = config['path_results_root'] + config['path_results']
     os.makedirs(config['path_results'])
     print("Results Path {0}".format(config['path_results']))
@@ -328,7 +327,7 @@ def experiment_execute(config):
 
     # ---- Boots the motes (not in simulation mode) ----
     print_header("Configure Motes")
-    if config['board'] == 'lab_M3':
+    if config['board'] == 'iot-lab_M3':
         iotlabowsn.mote_boot(config['exp_id'])
         valid_dagroot_config = iotlabowsn.dagroot_set(config)
     else:
@@ -379,7 +378,7 @@ def experiment_execute(config):
 def experiment_running_sequence(config):
          
     #selects the nodes
-    for nbnodes in [3, 25]:
+    for nbnodes in [25]:
         config['nb_nodes'] = nbnodes
         
         print("---- {0} nodes".format(nbnodes))
