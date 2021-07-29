@@ -378,7 +378,7 @@ def experiment_execute(config):
 def experiment_running_sequence(config):
          
     #selects the nodes
-    for nbnodes in [25]:
+    for nbnodes in [12]:
         config['nb_nodes'] = nbnodes
         
         print("---- {0} nodes".format(nbnodes))
