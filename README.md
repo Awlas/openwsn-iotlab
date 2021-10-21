@@ -1,4 +1,9 @@
 # openwsn-iotlab
+
+![](https://img.shields.io/badge/python-3.9-green)
+![](https://img.shields.io/badge/python-2.7-green)
+
+
 Here are a few scripts to handle an experiment executing openwsn:
 
 - mirroring the two fimrware directories for dagroot and devices
