@@ -37,7 +37,7 @@ This tool set depends on:
 
 
 ## Python
-You must install Python3 (for the scripts), and Python 2.7 (for openvisualizer)
+You must install Python3 (for the scripts), **and** Python 2.7 (for openvisualizer)
 
 ```
 sudo apt-get install python3
