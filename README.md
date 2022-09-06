@@ -53,9 +53,9 @@ sudo apt-get install python3-pip
 
 # Usage
 
-To execute the whole experiment pipeline:
+It executes the following pipeline:
 
-- one random subdirectory per experiment to save the log files + the sqlite DB 
+- creation of a random subdirectory per experiment to save the log files + the sqlite DB 
 - experiment reservation ([https://www.iot-lab.info/](https://www.iot-lab.info/)) with the right set of motes
 - compilation with the right parameters
 - flashing the motes (first one = DAGroot)
