@@ -162,7 +162,8 @@ def compilation_firmware(config):
         cmd=cmd + " scheduleopt=anycast,lowestrankfirst "
     elif (config['anycast']):
         cmd=cmd + " scheduleopt=anycast "
-    cmd=cmd + " stackcfg=adaptive-msf,cexampleperiod:"+str(config['cexampleperiod'])+",badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
+    # cmd=cmd + " stackcfg=adaptive-msf,cexampleperiod:"+str(config['cexampleperiod'])+",badmaxrssi:"+str(config['badmaxrssi'])+",goodminrssi:"+str(config['goodminrssi']) + " "
+    cmd=cmd + " stackcfg=adaptive-msf "
     cmd=cmd + " oos_openwsn "
 
     process, out, err = run_command_printrealtime(cmd=cmd, path=config['code_fw_src'])
@@ -175,8 +176,15 @@ def compilation_firmware(config):
 # get the iotlab id for a runnning experiment (to resume it)
 def get_running_id(config):
     cmd = 'iotlab-experiment get -e'
-    process,output,err = run_command(cmd=cmd)
-    infos = json.loads(output)
+    
+    while(True):
+        process,output,err = run_command(cmd=cmd)
+        if(err != ""):
+            print("Waiting for authentication with \"iotlab-auth -u <USER>\" on an other terminal...")
+            time.sleep(5)
+        else:
+            infos = json.loads(output)
+            break
 
     # pick the last (most recent) experiment
     try:
@@ -321,37 +329,6 @@ def flashing_motes(exp_id, config):
         print("Some motes have not been flashed correctly, stop now")
         exit(6)
 
-
-
-
-#install the last version of OV (present in the code_sw_src directory
-def openvisualizer_install(config):
-    print("Install the current version of Openvisualizer")
-    cmd="pip2 install -e ."
-    process,output,err = run_command(cmd=cmd, path=config['code_sw_src'])
-    print(err)
-    
-    if (process.returncode != 0):
-        print("Installation of openvisualizer has failed")
-        exit(-7)
-    else:
-        print("Installation ok")
-
-
-#install the last version of coap
-def coap_install(config):
-    print("Install the current version of CoAP")
-    cmd="pip2 install -e ."
-    process,output,err = run_command(cmd=cmd, path=config['code_coap_src'])
-    print(err)
-    
-    if (process.returncode != 0):
-        print("Installation of coap has failed")
-        exit(-7)
-    else:
-        print("Installation ok")
-
-
 #generated the configuration file (for logging)
 def openvisualizer_create_conf_file(config):
     #construct the config file
@@ -412,16 +389,20 @@ def openvisualizer_create_conf_file(config):
 def openvisualizer_start(config):
 
     #construct the command with all the options for openvisualizer
-    openvisualizer_options="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /home/theoleyre/openwsn/openwsn-fw"
-    openvisualizer_options=openvisualizer_options+ " --lconf " + config['conf_file']
+    # openvisualizer_options="--opentun --wireshark-debug --mqtt-broker 127.0.0.1 -d --fw-path /root/openwsn-iotlab/openwsn-fw"
+    # openvisualizer_options=openvisualizer_options+ " --lconf " + config['conf_file']
     if (config['board'] == "iot-lab_M3" ):
-        cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --iotlab-motes "
+        # cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --iotlab-motes "
+        # cmd="/usr/local/bin/openv-server -H localhost -P 9000 " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
+        cmd="/usr/local/bin/openv-server " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
+        # cmd="/usr/local/bin/openv-server -H IOTLab_OpenV_Server_Exp -P 9000 " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
         for i in range(len(config['dagroots_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['dagroots_list'][i]) + "." + config['site'] + ".iot-lab.info "
         for i in range(len(config['nodes_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['nodes_list'][i]) + "." + config['site'] + ".iot-lab.info "
     elif (config['board'] == "python" ):
-        cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --sim "+ str(config['nb_nodes']) + " " + config['topology']
+        # cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --sim "+ str(config['nb_nodes']) + " " + config['topology']
+        cmd="python2 /usr/local/bin/openv-server" + " --sim "+ str(config['nb_nodes']) + " " + config['topology']
 
     # stops the previous process
     try:
@@ -445,6 +426,7 @@ def openvisualizer_start(config):
 #return the nb of motes attached to openvisualizer
 def openvisualizer_nbmotes():
 
+    # cmd="openv-client --server IOTLab_OpenV_Server_Exp --port 9000 motes"
     cmd="openv-client motes"
     process,output,err = run_command(cmd=cmd)
     print("client: \n{0}".format(output))
@@ -464,8 +446,6 @@ def openvisualizer_nbmotes():
         return None
         
       
-
- 
 
 #start the web client part
 def openwebserver_start(config):
@@ -487,12 +467,10 @@ def mote_boot(exp_id):
     run_command_printrealtime(cmd=cmd)
 
 
-
-
 # Configuration: dagroot
 def dagroot_set(config):
     for node in config['dagroots_list']:
-        cmd="openv-client root m3-" + str(node) +  "." + config['site'] + ".iot-lab.info"
+        cmd="openv-client --server IOTLab_OpenV_Server_Exp --port 9000 root m3-" + str(node) +  "." + config['site'] + ".iot-lab.info"
         process,out,err = run_command(cmd=cmd)
         
         print("out: {0}".format(out))
@@ -503,9 +481,3 @@ def dagroot_set(config):
             print("the dagroot configuration failed")
             return False
         return True
-
-
-
-
-
-

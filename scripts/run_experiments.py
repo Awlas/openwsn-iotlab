@@ -20,64 +20,116 @@ import psutil
 #format
 import string
 import json
+# import argparse
 
 #custom libraries
 import iotlabowsn
 
-NEWEXP = False
-COMPIL = True
-SIMULATION = False
-    
-    
-    
+
+SITES=["grenoble", "lille", "paris", "saclay", "strasbourg", "toulouse"]
+COMPIL = os.environ['COMPIL']=='False' if False else True
+SIMULATION = os.environ['SIMULATION']=='True' if True else False
+
+
 #configuration for the experimenal setup (what stays unchanged)
 def configuration_set():
     config = {}
 
-    #paths
+    # -----
+    # Paths
+    # -----
+
     config['path_initial'] = os.getcwd()
     print ("Inital path: {0}".format(config['path_initial']))
     
-    config['path_results_root'] = "/home/theoleyre/openwsn/results/"
+    config['path_results_root'] = "/root/results/"
     config['path_results_root_crash'] = config['path_results_root'] + "/crash"
     config['path_results_root_finished'] = config['path_results_root'] + "/valid"
     os.makedirs(config['path_results_root_crash'], exist_ok=True)
     os.makedirs(config['path_results_root_finished'], exist_ok=True)
 
+    # -----
     # Metadata for experiments
-    config['user']="theoleyr"
-    config['subexp_duration']=60      # for one run (one set of parameters), in minutes
-    config['exp_duration']=config['subexp_duration'] * 2 + 30        # for the iot lab reservation (collection of runs), in minutes (two experiments + a safety margin)
-    config['exp_resume']=True           # restart an already running experiment (if one exists)
-    config['exp_resume_verif'] = False  # verification that the motes are those specified (in the running exp)
-    config['exp_name']="LS-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    # -----
 
+    # for one run (one set of parameters), in minutes
+    if(os.environ['SUB_EXP_DURATION'].isnumeric()):
+        config['subexp_duration']=int(os.environ['SUB_EXP_DURATION'])
+    else:
+        print("ERROR SUB_EXP_DURATION : {0} is not a number".format(os.environ['SUB_EXP_DURATION']))
+        exit(-4)
+
+    # for the iot lab reservation (collection of runs), in minutes (two experiments + a safety margin)
+    if(os.environ['SAFE_MARGIN_DURATION'].isnumeric()):
+        config['exp_duration']=config['subexp_duration'] * 2 + int(os.environ['SAFE_MARGIN_DURATION'])
+    else:
+        print("ERROR SAFE_MARGIN_DURATION : {0} is not a number".format(os.environ['SAFE_MARGIN_DURATION']))
+        exit(-4)
+    
+    # restart an already running experiment (if one exists)
+    config['exp_resume']=os.environ['EXP_RESUME']=='False' if False else True           
+    
+    # verification that the motes are those specified (in the running exp)
+    config['exp_resume_verif'] = os.environ['EXP_RESUME_VERIF']=='True' if True else False  
+    if(os.environ['EXP_NAME']!='RANDOM'):
+        config['exp_name']=os.environ['EXP_NAME']
+    else:
+        config['exp_name']="LS-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    # -----
     # Parameters of the experiment
+    # -----
+
     config['board']="iot-lab_M3"
     config['toolchain']="armgcc"
     config['archi']="m3"
-    config['site']="grenoble"
-    config['maxid']=289             #discard larger node's ids
-    config['minid']=70              #discard smaller node's ids
-    config['maxspaceid']=9          #max separation with the closest id
+
+    if(os.environ['SITE'] in SITES):
+        config['site']=os.environ['SITE']
+    else:
+        print("ERROR SITE : {0} isn't a Fit IoT-LAB".format(os.environ['SITE']))
+        exit(-4)
+
+    #discard larger node's ids
+    if(os.environ['MAX_ID'].isnumeric()):
+        config['maxid']=int(os.environ['MAX_ID'])
+    else:
+        print("ERROR MAX_ID : {0} is not a number".format(os.environ['MAX_ID']))
+        exit(-4)
+
+    #discard smaller node's ids
+    if(os.environ['MIN_ID'].isnumeric()):
+        config['minid']=int(os.environ['MIN_ID'])
+    else:
+        print("ERROR MIN_ID : {0} is not a number".format(os.environ['MIN_ID']))
+        exit(-4)
+
+    #max separation with the closest id
+    if(os.environ['MAX_SPACE_ID'].isnumeric()):
+        config['maxspaceid']=int(os.environ['MAX_SPACE_ID'])
+    else:
+        print("ERROR MAX_SPACE_ID : {0} is not a number".format(os.environ['MAX_SPACE_ID']))
+        exit(-4)
     
-    
+    # -----
     #for simulation
+    # -----
+
     if SIMULATION:
         config['board']="python"
         config['toolchain']="gcc"
         config['topology']="--load-topology " + config['path_initial'] + "/topologies/topology-3nodes.json"
     
     
-    # openvisualizer directory
-    config['code_sw_src'] = config['path_initial'] + "/../openvisualizer/"
+    # openvisualizer director
+    config['code_sw_src'] = config['path_initial'] + "/../../openvisualizer/"
     if (os.path.exists(config['code_sw_src']) == False):
         print("{0} does not exist".format(config['code_sw_src']))
         exit(-4)
     config['code_sw_gitversion']="525b684"
 
     # coap directory
-    config['code_coap_src'] = config['path_initial'] + "/../coap/"
+    config['code_coap_src'] = config['path_initial'] + "/../../coap/"
     if (os.path.exists(config['code_coap_src']) == False):
         print("{0} does not exist".format(config['code_coap_src']))
         exit(-4)
@@ -85,21 +137,18 @@ def configuration_set():
 
 
     # firmware part
-    config['code_fw_src']= config['path_initial'] + "/../openwsn-fw/"
+    config['code_fw_src']= config['path_initial'] + "/../../openwsn-fw/"
     if (os.path.exists(config['code_fw_src']) == False):
         print("{0} does not exist".format(config['code_fw_src']))
         exit(-4)
     config['code_fw_gitversion']="515eafa7"
     config['code_fw_bin']=config['code_fw_src']+"build/iot-lab_M3_armgcc/projects/common/03oos_openwsn_prog"
     
- 
     return(config)
 
 
 
         
-        
-
 #prints the headers of a section
 def print_header(msg):
     print("\n\n---------------------------------------------")
@@ -153,6 +202,8 @@ def nodes_selection(config, nbnodes):
     #construct the list of motes
     print_header("Nodes Selection")
     testbed_nodealive_list = iotlabowsn.get_nodes_list(config["site"], config["archi"], "Alive")
+    print( "Nodes alive: ")
+    print(testbed_nodealive_list)
     nbtest=0
     config['nodes_list'] = []
 
@@ -276,24 +327,41 @@ def experiment_execute(config):
     #wait that openvizualizer is properly initiated
     nb_try = 0
     while True:
-        time_start = time.time()
-        t_openvisualizer = iotlabowsn.openvisualizer_start(config)
-        nbmotes = None
-        while nbmotes is None:
-            nbmotes = iotlabowsn.openvisualizer_nbmotes()
-        
-            print("nb motes : {0}".format(nbmotes))
-        
-            #crash -> restart openvisualizer
-            if t_openvisualizer.is_alive() is False:
-                print("Openvisualizer seems have crashed / stopped")
+        while(True):
+            time_start = time.time()
+            t_openvisualizer = iotlabowsn.openvisualizer_start(config)
+            nb_retry = 0
+            nbmotes = None
+            while nbmotes is None and nb_retry<10:
+                nbmotes = iotlabowsn.openvisualizer_nbmotes()
+            
+                print("nb motes : {0}".format(nbmotes))
+            
+                #crash -> restart openvisualizer
+                if t_openvisualizer.is_alive() is False:
+                    print("Openvisualizer seems have crashed / stopped")
+                    break
+                    
+                #wait 2 seconds before trying to connect to the server
+                if nbmotes is None:
+                    print("openvisualizer is not yet running")
+                    time.sleep(1)
+                nb_retry = nb_retry + 1
+            
+            if(nb_retry == 10):
+                print("Please, check if you are well connected on ssh to your IoT-LAB account...")
+                print("If it's not the case, create a ssh key and link it to your account by running \"iotlab-auth --add-ssh-key\" on an other terminal")
+                #stops openvisualizer
+                if t_openvisualizer.is_alive() is True:
+                    print("Cleanning up children process".format(t_openvisualizer))
+                    process = psutil.Process(os.getpid())
+                    for proc in process.children(recursive=True):
+                        print("killing {0}".format(proc))
+                        proc.kill()
+                        print("..killed")
+            else:
                 break
-                
-            #wait 2 seconds before trying to connect to the server
-            if nbmotes is None:
-                print("openvisualizer is not yet running")
-                time.sleep(1)
-                
+             
         #the nb of running motes matches the config
         if nbmotes == config['nb_nodes']:
             print("All the motes are connected to openvisualizer")
@@ -321,8 +389,8 @@ def experiment_execute(config):
 
     # ---- Openweb server (optional, for debuging via a web interface) ----
 
-    print_header("Openweb server")
-    t_openwebserver = iotlabowsn.openwebserver_start(config)
+    # print_header("Openweb server")
+    # t_openwebserver = iotlabowsn.openwebserver_start(config)
     
 
     # ---- Boots the motes (not in simulation mode) ----
@@ -364,53 +432,57 @@ def experiment_execute(config):
    
    
     #kill all my children (including openweb server)
-    if t_openwebserver is not None and t_openwebserver.is_alive():
-        print("Cleanning up children process".format(t_openwebserver))
-        process = psutil.Process(os.getpid())
-        for proc in process.children(recursive=True):
-            print("killing {0}".format(proc))
-            proc.kill()
-            print("..killed")
+    # if t_openwebserver is not None and t_openwebserver.is_alive():
+    #     print("Cleanning up children process".format(t_openwebserver))
+    #     process = psutil.Process(os.getpid())
+    #     for proc in process.children(recursive=True):
+    #         print("killing {0}".format(proc))
+    #         proc.kill()
+    #         print("..killed")
 
 
 
 #starts a sequence of experiments, with a variable nb of nodes
 def experiment_running_sequence(config):
-         
-    #selects the nodes
-    for nbnodes in [12]:
-        config['nb_nodes'] = nbnodes
         
-        print("---- {0} nodes".format(nbnodes))
-        if config['board']=="iot-lab_M3":
-            config = nodes_selection(config, nbnodes)
-        
-        #application period
-        config['cexampleperiod'] = 500 * nbnodes
-
-
-        #reservation of the experiments
-        if config['board']=="iot-lab_M3":
-            config['exp_id'] = experiment_reservation(config)
-        else:
-            config['exp_id'] = 0
-
-        # test the two different solutions
-        #for anycast in [False , True]:
-        for anycast in [True, False]:
-            time_start = time.time()
+    if(not(os.environ['NB_MOTES'].isnumeric())):
+        print("ERROR NB_MOTES : {0} is not a number".format(os.environ['NB_MOTES']))
+        exit(-4)
+    else:
+        #selects the nodes
+        for nbnodes in [int(os.environ['NB_MOTES'])]:
+            config['nb_nodes'] = nbnodes
             
-            #param
-            config['anycast'] = anycast
-            print_header("anycast={0}, nbnodes={1}".format(anycast, nbnodes))
-
-            experiment_execute(config)
+            print("---- {0} nodes".format(nbnodes))
+            if config['board']=="iot-lab_M3":
+                config = nodes_selection(config, nbnodes)
             
-            print("nb seconds runtime for this experiment: {0}".format(time.time() - time_start))
+            #application period
+            config['cexampleperiod'] = 500 * nbnodes
 
-        #stop the experiment
-        iotlabowsn.exp_stop(config['exp_id'])
-        time.sleep(4.0)
+
+            #reservation of the experiments
+            if config['board']=="iot-lab_M3":
+                config['exp_id'] = experiment_reservation(config)
+            else:
+                config['exp_id'] = 0
+
+            # test the two different solutions
+            #for anycast in [False , True]:
+            for anycast in [True, False]:
+                time_start = time.time()
+                
+                #param
+                config['anycast'] = anycast
+                print_header("anycast={0}, nbnodes={1}".format(anycast, nbnodes))
+
+                experiment_execute(config)
+                
+                print("nb seconds runtime for this experiment: {0}".format(time.time() - time_start))
+
+            #stop the experiment
+            iotlabowsn.exp_stop(config['exp_id'])
+            time.sleep(4.0)
 
 
 #starts one fixed experiment for fault tolerance
@@ -447,11 +519,10 @@ def experiment_running_faulttolerance(config):
     time.sleep(4.0)
 
 
-
-
-
 #main (multithreading safe)
 if __name__ == "__main__":
+
+    print("sub_exp_duration : " + os.environ['SUB_EXP_DURATION'])
 
      #----- INIT
 
@@ -462,21 +533,19 @@ if __name__ == "__main__":
     config['seed'] = int(time.time()) #1
     random.seed(config['seed'])
 
-
-    #openvisualizer
-    iotlabowsn.openvisualizer_install(config)
-    iotlabowsn.coap_install(config)
-
     #Parameters for this set of experiments
     config['badmaxrssi'] = -100
     config['goodminrssi'] = -100
     config['lowestrankfirst'] = 1
 
-
-    #replay the same values 5 times
-    for counter in range(5):
-        #experiment_running_faulttolerance(config)
-        experiment_running_sequence(config)
+    if(not(os.environ['NB_EXP'].isnumeric())):
+        print("ERROR NB_EXP : {0} is not a number".format(os.environ['NB_EXP']))
+        exit(-4)
+    else:
+        #replay the same values NB_EXP times
+        for counter in range(int(os.environ['NB_EXP'])):
+            #experiment_running_faulttolerance(config)
+            experiment_running_sequence(config)
 
     #if we are here, this means that the collection of experiments is finished
     print("End of the computation")
