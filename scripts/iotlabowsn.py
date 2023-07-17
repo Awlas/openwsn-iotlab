@@ -394,8 +394,8 @@ def openvisualizer_start(config):
     if (config['board'] == "iot-lab_M3" ):
         # cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --iotlab-motes "
         # cmd="/usr/local/bin/openv-server -H localhost -P 9000 " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
-        cmd="/usr/local/bin/openv-server " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
-        # cmd="/usr/local/bin/openv-server -H IOTLab_OpenV_Server_Exp -P 9000 " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
+        # cmd="/usr/local/bin/openv-server " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
+        cmd="/usr/local/bin/openv-server -H IOTLab_OpenV_Server_Exp -P 9000 " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
         for i in range(len(config['dagroots_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['dagroots_list'][i]) + "." + config['site'] + ".iot-lab.info "
         for i in range(len(config['nodes_list'])):
@@ -426,8 +426,8 @@ def openvisualizer_start(config):
 #return the nb of motes attached to openvisualizer
 def openvisualizer_nbmotes():
 
-    # cmd="openv-client --server IOTLab_OpenV_Server_Exp --port 9000 motes"
-    cmd="openv-client motes"
+    cmd="openv-client --server IOTLab_OpenV_Server_Exp --port 9000 motes"
+    # cmd="openv-client motes"
     process,output,err = run_command(cmd=cmd)
     print("client: \n{0}".format(output))
     #print(output.find("Connection refused"))
