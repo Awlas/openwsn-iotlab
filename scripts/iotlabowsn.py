@@ -395,14 +395,14 @@ def openvisualizer_start(config):
         # cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --iotlab-motes "
         # cmd="/usr/local/bin/openv-server -H localhost -P 9000 " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
         # cmd="/usr/local/bin/openv-server " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
-        cmd="/usr/local/bin/openv-server -H IOTLab_OpenV_Server_Exp -P 9000 " + "--fw-path /root/openwsn-fw " + "--iotlab-motes "
+        cmd="/usr/local/bin/openv-server -H IOTLab_OpenV_Server_Exp -P 9000 " + "--fw-path /root/openwsn-fw " + " --lconf " + config['conf_file'] + " --iotlab-motes "
         for i in range(len(config['dagroots_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['dagroots_list'][i]) + "." + config['site'] + ".iot-lab.info "
         for i in range(len(config['nodes_list'])):
             cmd=cmd + config['archi'] + "-" + str(config['nodes_list'][i]) + "." + config['site'] + ".iot-lab.info "
     elif (config['board'] == "python" ):
         # cmd="python2 /usr/local/bin/openv-server " + openvisualizer_options + " --sim "+ str(config['nb_nodes']) + " " + config['topology']
-        cmd="python2 /usr/local/bin/openv-server" + " --sim "+ str(config['nb_nodes']) + " " + config['topology']
+        cmd="python2 /usr/local/bin/openv-server -H IOTLab_OpenV_Server_Exp -P 9000 " + " --sim "+ str(config['nb_nodes']) + " " + config['topology']
 
     # stops the previous process
     try:
